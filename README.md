@@ -4,7 +4,7 @@
 
 ## What is RCA-MCP?
 
-The only MCP server purpose-built for causal Root Cause Analysis. 43 tools covering
+The only MCP server purpose-built for causal Root Cause Analysis. 44 tools covering
 causal graph construction, 13 RCA model families (including Salesforce PyRCA
 algorithms), multi-model consensus, and PDF/HTML/Excel/Markdown report generation.
 Works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain — 9 providers.
@@ -127,7 +127,7 @@ OpenRouter, Claude Desktop).
 
 ---
 
-## All 43 Tools
+## All 44 Tools
 
 Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
 
@@ -191,6 +191,7 @@ Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
 | `rca_admin_health` | ✅ | Server health snapshot |
 | `rca_admin_read_audit_log` | ✅ | Read structured audit entries |
 | `rca_admin_purge_namespace` | 👑 | Delete all records in a namespace (admin) |
+| `rca_admin_show_plan_info` | ✅ | Show current plan, limits, and upgrade options |
 
 ### Group F — Reports & Providers
 

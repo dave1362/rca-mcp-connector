@@ -488,3 +488,9 @@ class PollTaskInput(BaseModel):
     task_id: str = Field(..., description="Task ID returned by rca_analysis_run_async")
 
 
+
+
+class PlanInfoInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")

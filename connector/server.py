@@ -45,6 +45,7 @@ from .models import (
     ModelValidateInput,
     NodeOpInput,
     PathScoreInput,
+    PlanInfoInput,
     PollTaskInput,
     ProviderConfigInput,
     PurgeInput,
@@ -110,6 +111,7 @@ TOOL_ROUTES = {
     "rca_pyrca_validate_setup": "pyrca/validate_setup",
     "rca_analysis_run_async": "analysis/run_async",
     "rca_analysis_poll_task": "analysis/poll_task",
+    "rca_admin_show_plan_info": "admin/show_plan_info",
 }
 
 @mcp.tool(
@@ -963,6 +965,22 @@ async def rca_analysis_poll_task(params: PollTaskInput) -> str:
              error (if failed)
     """
     return await _client.call("analysis/poll_task", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_admin_show_plan_info",
+    annotations={"title": "Show Current Plan & Limits", "readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+)
+async def rca_admin_show_plan_info(params: PlanInfoInput) -> str:
+    """
+    Show the current plan name, all feature limits, and upgrade options.
+    Useful for understanding what features are available on your current plan.
+
+    Returns:
+        str: JSON with plan details, current limits, available upgrades,
+             and upgrade URL if not on Enterprise.
+    """
+    return await _client.call("admin/show_plan_info", params.model_dump())
 
 
 if __name__ == "__main__":
