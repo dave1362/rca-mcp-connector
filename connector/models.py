@@ -494,3 +494,165 @@ class PlanInfoInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
+
+
+# ── Group H — Equipment Knowledge (Phase 9) ─────────────────────────────────────
+
+class GuideIngestInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    equipment_id: str = Field(..., min_length=1, max_length=128,
+        description="Unique equipment identifier e.g. 'pump_XR200_unit3'")
+    equipment_type: str = Field(...,
+        description="Equipment type e.g. pump, motor, compressor, conveyor, valve, "
+                     "sensor, hvac, plc, vacuum_pump, interface_valve, ml_pipeline, "
+                     "cfd_solver, custom")
+    name: str = Field(..., min_length=1, max_length=256,
+        description="Human-readable guide name")
+    content: str = Field(..., min_length=10,
+        description="Guide content as plain text, Markdown, or JSON decision tree")
+    format: str = Field(default="markdown",
+        pattern="^(markdown|plain|json_dtree)$",
+        description="Guide format: markdown | plain | json_dtree")
+    tags: List[str] = Field(default_factory=list,
+        description="Domain tags e.g. ['pump', 'hydraulic', 'water-treatment']",
+        max_length=20)
+    version: str = Field(default="1.0", max_length=20)
+
+
+class GuideSearchInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    symptom: str = Field(..., min_length=3, max_length=512,
+        description="Symptom or fault description to search for")
+    equipment_type: Optional[str] = Field(default=None,
+        description="Filter to specific equipment type")
+    tags: Optional[List[str]] = Field(default=None,
+        description="Filter by tags e.g. ['pump', 'hydraulic']")
+    top_k: int = Field(default=5, ge=1, le=20,
+        description="Maximum results to return (Free: max 3, Starter+: max 20)")
+
+
+class GuideGetInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    guide_id: str = Field(..., description="Guide ID from rca_guide_ingest")
+    section_id: Optional[str] = Field(default=None,
+        description="Optional: retrieve specific section only")
+
+
+class GuideListInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    equipment_type: Optional[str] = Field(default=None)
+    tags: Optional[List[str]] = Field(default=None)
+
+
+class DTreeStartInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    guide_id: str = Field(...,
+        description="Guide ID of a json_dtree guide, OR 'auto' to generate from FMEA")
+    equipment_id: str = Field(..., min_length=1, max_length=128)
+    symptom: str = Field(..., min_length=3, max_length=512,
+        description="Initial observed symptom or fault description")
+    session_id: Optional[str] = Field(default=None,
+        description="Provide to resume an existing session")
+    fmea_result_id: Optional[str] = Field(default=None,
+        description="When guide_id='auto': result_id of a completed FMEA analysis")
+
+
+class DTreeAnswerInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    session_id: str = Field(..., description="Active session ID from rca_dtree_start")
+    answer: str = Field(..., pattern="^(yes|no|unknown)$",
+        description="Answer to current diagnostic question: yes | no | unknown")
+    measurement: Optional[str] = Field(default=None, max_length=256,
+        description="Optional actual reading e.g. 'bearing temp: 92C, vibration: 8.5mm/s'")
+
+
+class DTreeListInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    equipment_id: Optional[str] = Field(default=None)
+    resolved_only: bool = Field(default=False)
+
+
+class GuideReportInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    session_id: str = Field(..., description="Completed diagnostic session ID")
+    format: str = Field(default="markdown", pattern="^(pdf|html|markdown)$")
+    include_guide_refs: bool = Field(default=True,
+        description="Include relevant guide section references")
+    custom_title: Optional[str] = Field(default=None, max_length=200)
+
+
+class DTreeGenerateFromFmeaInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    fmea_result_id: str = Field(..., description="result_id of a completed FMEA analysis")
+    equipment_id: str = Field(..., min_length=1, max_length=128)
+    equipment_type: str = Field(default="custom")
+    save_as_guide: bool = Field(default=True,
+        description="If true, ingest the generated tree as a json_dtree guide")
+
+
+class GuidePDFPreviewInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    pdf_base64: str = Field(
+        ...,
+        description="Base64-encoded PDF file bytes. "
+                     "In Python: base64.b64encode(open('manual.pdf','rb').read()).decode()"
+    )
+    n_pages: int = Field(default=5, ge=1, le=20,
+        description="Number of pages to preview (default 5, max 20)")
+    strategy: str = Field(default="auto",
+        pattern="^(auto|text_native|ocr|table|mixed)$",
+        description="Parsing strategy: auto | text_native | ocr | table | mixed")
+
+
+class GuidePDFIngestInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    pdf_base64: str = Field(..., description="Base64-encoded PDF file bytes")
+    equipment_id: str = Field(..., min_length=1, max_length=128,
+        description="Unique equipment identifier e.g. 'pump_grundfos_cr32'")
+    equipment_type: str = Field(...,
+        description="Equipment type: pump | motor | compressor | valve | hvac | "
+                     "plc | membrane | vacuum_pump | interface_valve | "
+                     "cfd_solver | ml_pipeline | custom | ...")
+    name: str = Field(..., min_length=1, max_length=256,
+        description="Guide display name e.g. 'Grundfos CR32 Service Manual v4.2'")
+    tags: List[str] = Field(default_factory=list,
+        description="Domain tags e.g. ['pump', 'hydraulic', 'aquatreat', 'preventive']",
+        max_length=20)
+    version: str = Field(default="1.0", max_length=20)
+    strategy: str = Field(default="auto",
+        pattern="^(auto|text_native|ocr|table|mixed)$",
+        description="Parsing strategy (default: auto — recommended)")
+    ocr_dpi: int = Field(default=300, ge=150, le=600,
+        description="OCR resolution in DPI (default 300; use 600 for fine print)")
+    ocr_language: str = Field(default="eng", max_length=20,
+        description="Tesseract language code (default 'eng'). Multi-language: 'eng+fra', 'eng+deu'.")
+    max_pages: Optional[int] = Field(default=None, ge=1, le=2000,
+        description="Limit pages parsed (default: all pages)")
+    skip_preview_check: bool = Field(default=False,
+        description="Skip quality check and ingest regardless of parse_quality score. "
+                     "Not recommended — run rca_guide_pdf_preview first.")
+    min_quality_threshold: float = Field(default=0.3, ge=0.0, le=1.0,
+        description="Minimum parse_quality score required to proceed with ingestion. "
+                     "Set to 0.0 to always ingest. Default: 0.3")

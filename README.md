@@ -4,7 +4,7 @@
 
 ## What is RCA-MCP?
 
-The only MCP server purpose-built for causal Root Cause Analysis. 44 tools covering
+The only MCP server purpose-built for causal Root Cause Analysis. 55 tools covering
 causal graph construction, 13 RCA model families (including Salesforce PyRCA
 algorithms), multi-model consensus, and PDF/HTML/Excel/Markdown report generation.
 Works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain — 9 providers.
@@ -124,10 +124,17 @@ OpenRouter, Claude Desktop).
 | SLA (99.9% uptime) | ❌ | ❌ | ❌ | ✅ |
 | Dedicated instance | ❌ | ❌ | ❌ | ✅ |
 | Token expiry | 24 h | 7 days | 30 days | 1 year |
+| Guide ingestion | ❌ | 10 guides | 100 guides | Unlimited |
+| Guide search results | 3 | 20 | 20 | 20 |
+| Interactive diagnostics (dtree) | ❌ | ✅ | ✅ | ✅ |
+| Diagnostic reports | ❌ | Markdown | PDF/HTML/MD | PDF/HTML/MD |
+| FMEA-to-tree generation | ❌ | ✅ | ✅ | ✅ |
+| PDF guide ingestion | ❌ | ✅ (counts toward guide limit) | ✅ | ✅ |
+| PDF OCR (scanned docs) | ❌ | ✅ | ✅ | ✅ |
 
 ---
 
-## All 44 Tools
+## All 55 Tools
 
 Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
 
@@ -209,6 +216,26 @@ Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
 | `rca_pyrca_random_walk` | 🌟 | Personalised PageRank root cause localisation |
 | `rca_pyrca_ht_diagnosis` | 🌟 | Hypothesis testing with descendant adjustment |
 | `rca_pyrca_validate_setup` | ✅ | Check PyRCA strategy and licence compliance |
+
+### Group H — Equipment Knowledge (Phase 9)
+
+| Tool | Plan | Description |
+|---|---|---|
+| `rca_guide_ingest` | 🌟 | Ingest a troubleshooting guide (markdown/plain/json_dtree) |
+| `rca_guide_search` | ✅ | Search guides by symptom (TF-IDF); Free capped at 3 results |
+| `rca_guide_get` | ✅ | Retrieve a full guide or a specific section |
+| `rca_guide_list` | ✅ | List ingested guides with equipment_type/tag filters |
+| `rca_dtree_start` | 🌟 | Begin an interactive diagnostic decision-tree session |
+| `rca_dtree_answer` | 🌟 | Answer a diagnostic question; returns next question or diagnosis |
+| `rca_dtree_list_sessions` | 🌟 | List diagnostic sessions with equipment/status filters |
+| `rca_guide_generate_report` | 🌟/💎 | Maintenance report from a resolved session; Markdown Starter+, PDF/HTML Pro+ |
+| `rca_dtree_generate_from_fmea` | 🌟 | Auto-generate a decision tree from FMEA results |
+| `rca_guide_pdf_preview` | 🌟 | Preview PDF quality before ingestion |
+| `rca_guide_ingest_pdf` | 🌟 | Parse a PDF equipment manual → knowledge base |
+
+Ships with 4 built-in sample guides (pump, vacuum interface valve, ML pipeline,
+CFD solver) auto-loaded on first startup, and supports 26 equipment types.
+PDF ingestion supports 4 parsing strategies (text_native, ocr, table, mixed).
 
 ---
 

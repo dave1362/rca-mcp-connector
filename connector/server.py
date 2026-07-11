@@ -20,6 +20,10 @@ from .models import (
     AuthSetupInput,
     BatchAnalysisInput,
     CompareResultsInput,
+    DTreeAnswerInput,
+    DTreeGenerateFromFmeaInput,
+    DTreeListInput,
+    DTreeStartInput,
     EdgeOpInput,
     EnsembleInput,
     EpsilonDiagnosisInput,
@@ -33,6 +37,13 @@ from .models import (
     GraphMergeInput,
     GraphRestoreVersionInput,
     GraphScoreInput,
+    GuideGetInput,
+    GuideIngestInput,
+    GuideListInput,
+    GuidePDFIngestInput,
+    GuidePDFPreviewInput,
+    GuideReportInput,
+    GuideSearchInput,
     HealthInput,
     HTDiagnosisInput,
     ListKeysInput,
@@ -112,6 +123,17 @@ TOOL_ROUTES = {
     "rca_analysis_run_async": "analysis/run_async",
     "rca_analysis_poll_task": "analysis/poll_task",
     "rca_admin_show_plan_info": "admin/show_plan_info",
+    "rca_guide_ingest": "guide/ingest",
+    "rca_guide_search": "guide/search",
+    "rca_guide_get": "guide/get",
+    "rca_guide_list": "guide/list",
+    "rca_dtree_start": "dtree/start",
+    "rca_dtree_answer": "dtree/answer",
+    "rca_dtree_list_sessions": "dtree/list_sessions",
+    "rca_guide_generate_report": "guide/generate_report",
+    "rca_dtree_generate_from_fmea": "dtree/generate_from_fmea",
+    "rca_guide_pdf_preview": "guide/pdf_preview",
+    "rca_guide_ingest_pdf": "guide/ingest_pdf",
 }
 
 @mcp.tool(
@@ -981,6 +1003,243 @@ async def rca_admin_show_plan_info(params: PlanInfoInput) -> str:
              and upgrade URL if not on Enterprise.
     """
     return await _client.call("admin/show_plan_info", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_ingest",
+    annotations={'title': 'Ingest Equipment Troubleshooting Guide', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_guide_ingest(params: GuideIngestInput) -> str:
+    """
+    🌟 Starter+ — Upload and index an equipment troubleshooting guide into the
+    knowledge base.
+
+    Supports three formats:
+      markdown   — Structured Markdown with ## headings (recommended);
+                   fault codes (F-###, ERR-###) are auto-extracted
+      plain      — Raw text; split into sections on double newlines
+      json_dtree — JSON decision tree for interactive diagnostics via rca_dtree_start
+
+    Guide is immediately searchable via rca_guide_search after ingestion.
+
+    Plan limits: Starter up to 10 guides, Pro up to 100, Enterprise unlimited.
+
+    Args:
+        params (GuideIngestInput): equipment_id, equipment_type, name, content,
+            format, tags, version
+
+    Returns:
+        str: JSON with guide_id, section_count, symptom_count, fault_code_count
+    """
+    return await _client.call("guide/ingest", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_search",
+    annotations={'title': 'Search Troubleshooting Guides by Symptom', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_guide_search(params: GuideSearchInput) -> str:
+    """
+    ✅ All plans — Search the equipment knowledge base by symptom description
+    using TF-IDF relevance ranking. Free plan capped at 3 results.
+
+    Args:
+        params (GuideSearchInput): symptom, equipment_type, tags, top_k (1-20)
+
+    Returns:
+        str: JSON list of matching guide sections with relevance_score,
+             excerpt, fault_codes, and page_ref
+    """
+    return await _client.call("guide/search", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_get",
+    annotations={'title': 'Retrieve Troubleshooting Guide', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_guide_get(params: GuideGetInput) -> str:
+    """
+    ✅ All plans — Retrieve a full troubleshooting guide or a specific section.
+
+    Args:
+        params (GuideGetInput): guide_id, optional section_id
+
+    Returns:
+        str: JSON with metadata and sections (or single section)
+    """
+    return await _client.call("guide/get", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_list",
+    annotations={'title': 'List Ingested Troubleshooting Guides', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_guide_list(params: GuideListInput) -> str:
+    """
+    ✅ All plans — List all ingested troubleshooting guides with optional
+    equipment_type/tag filters.
+
+    Args:
+        params (GuideListInput): optional equipment_type, tags filters
+
+    Returns:
+        str: JSON list of guide metadata (guide_id, equipment_id, equipment_type,
+             name, version, tags, section_count, created_at)
+    """
+    return await _client.call("guide/list", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_dtree_start",
+    annotations={'title': 'Start Equipment Diagnostic Session', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_dtree_start(params: DTreeStartInput) -> str:
+    """
+    🌟 Starter+ — Begin an interactive diagnostic session using a decision
+    tree guide. Returns the first question — answer with rca_dtree_answer.
+
+    Two modes:
+      1. guide_id = <uuid>  → Use a specific json_dtree guide
+      2. guide_id = "auto"  → Auto-generate tree from FMEA results
+         (requires fmea_result_id pointing to a completed FMEA analysis)
+
+    Args:
+        params (DTreeStartInput): guide_id, equipment_id, symptom, session_id,
+            fmea_result_id
+
+    Returns:
+        str: JSON with session_id, question, options (yes/no/unknown), progress_pct
+    """
+    return await _client.call("dtree/start", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_dtree_answer",
+    annotations={'title': 'Answer Diagnostic Question', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_dtree_answer(params: DTreeAnswerInput) -> str:
+    """
+    🌟 Starter+ — Answer the current diagnostic question to advance the
+    decision tree. Call repeatedly until status == "resolved".
+
+    Args:
+        params (DTreeAnswerInput): session_id, answer (yes|no|unknown), measurement
+
+    Returns:
+        str: JSON with status, question OR diagnosis, progress_pct.
+             Diagnosis fields (when resolved): diagnosis, confidence, actions,
+             parts_to_check, estimated_repair_time, escalate_to_specialist,
+             fault_codes, references, diagnostic_path
+    """
+    return await _client.call("dtree/answer", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_dtree_list_sessions",
+    annotations={'title': 'List Diagnostic Sessions', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_dtree_list_sessions(params: DTreeListInput) -> str:
+    """
+    🌟 Starter+ — List all diagnostic sessions with optional equipment_id /
+    resolved_only filters.
+
+    Returns:
+        str: JSON with total, sessions (including diagnosis if resolved)
+    """
+    return await _client.call("dtree/list_sessions", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_generate_report",
+    annotations={'title': 'Generate Equipment Diagnostic Report', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_guide_generate_report(params: GuideReportInput) -> str:
+    """
+    🌟 Starter+ (markdown) / 💎 Pro+ (PDF/HTML) — Generate a maintenance/
+    troubleshooting report from a completed diagnostic session.
+
+    Report includes equipment/symptom summary, full diagnostic path,
+    root cause with confidence score, recommended actions and parts list,
+    measurements recorded, guide section references, and escalation flag.
+
+    Args:
+        params (GuideReportInput): session_id, format (pdf|html|markdown),
+            include_guide_refs, custom_title
+    """
+    return await _client.call("guide/generate_report", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_dtree_generate_from_fmea",
+    annotations={'title': 'Generate Decision Tree from FMEA Results', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_dtree_generate_from_fmea(params: DTreeGenerateFromFmeaInput) -> str:
+    """
+    🌟 Starter+ — Auto-generate a diagnostic decision tree from a completed
+    FMEA analysis, converting HIGH-priority failure modes into a sequential
+    yes/no diagnostic tree. When save_as_guide=True (default), the tree is
+    ingested as a json_dtree guide and the returned guide_id can be passed
+    to rca_dtree_start.
+
+    Args:
+        params (DTreeGenerateFromFmeaInput): fmea_result_id, equipment_id,
+            equipment_type, save_as_guide
+
+    Returns:
+        str: JSON with the generated tree, and guide_id if save_as_guide=True
+    """
+    return await _client.call("dtree/generate_from_fmea", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_pdf_preview",
+    annotations={'title': 'Preview PDF Before Ingestion', 'readOnlyHint': True, 'destructiveHint': False, 'idempotentHint': True, 'openWorldHint': False},
+)
+async def rca_guide_pdf_preview(params: GuidePDFPreviewInput) -> str:
+    """
+    🌟 Starter+ — Preview a PDF document before full ingestion to verify
+    parsing quality. Always call this BEFORE rca_guide_ingest_pdf.
+
+    Strategies: text_native (born-digital, fastest), ocr (scanned, needs
+    Tesseract), table (parts lists/spec tables), mixed (combination),
+    auto (recommended default).
+
+    Args:
+        params (GuidePDFPreviewInput): pdf_base64, n_pages, strategy
+
+    Returns:
+        str: JSON with detected_strategy, page_count, scanned_page_ratio,
+             estimated_quality, sample_text, fault_codes_preview,
+             part_numbers_preview, tables_found, recommendations, dependencies
+    """
+    return await _client.call("guide/pdf_preview", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_ingest_pdf",
+    annotations={'title': 'Ingest PDF Equipment Manual into Knowledge Base', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_guide_ingest_pdf(params: GuidePDFIngestInput) -> str:
+    """
+    🌟 Starter+ — Parse a PDF equipment manual and ingest it into the RCA
+    knowledge base.
+
+    Recommended workflow: 1) rca_guide_pdf_preview to check quality,
+    2) rca_guide_ingest_pdf if quality >= 0.5, 3) rca_guide_search to verify.
+
+    Plan limits: Starter up to 10 guides total, Pro up to 100, Enterprise
+    unlimited. Max PDF size: 50MB.
+
+    Args:
+        params (GuidePDFIngestInput): pdf_base64, equipment_id, equipment_type,
+            name, tags, version, strategy, ocr_dpi, ocr_language, max_pages,
+            skip_preview_check, min_quality_threshold
+
+    Returns:
+        str: JSON with guide_id, section_count, fault_codes, part_numbers,
+             parse_quality, strategy_used, page_count, word_count
+    """
+    return await _client.call("guide/ingest_pdf", params.model_dump())
 
 
 if __name__ == "__main__":
