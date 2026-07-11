@@ -101,40 +101,9 @@ OpenRouter, Claude Desktop).
 
 ---
 
-## Tier Comparison
-
-| Feature | Free | Starter ($19) | Pro ($79) | Enterprise ($399) |
-|---|---|---|---|---|
-| Rate limit/min | 20 | 60 | 120 | 300 |
-| Max models | 5 | 20 | Unlimited | Unlimited |
-| Max results stored | 100 | 10,000 | Unlimited | Unlimited |
-| Batch analysis | ❌ | 5 incidents | 20 incidents | 20 incidents |
-| Report: Markdown | ✅ | ✅ | ✅ | ✅ |
-| Report: HTML + PDF | ❌ | ✅ | ✅ | ✅ |
-| Report: Excel | ❌ | ❌ | ✅ | ✅ |
-| PyRCA algorithms | ❌ | ✅ | ✅ | ✅ |
-| Causal discovery | ❌ | ❌ | ✅ | ✅ |
-| Graph versioning | ❌ | ✅ | ✅ | ✅ |
-| Model ensembling | ❌ | ❌ | ✅ | ✅ |
-| Async task runner | ❌ | ❌ | ✅ | ✅ |
-| Multiple API keys | ❌ | ❌ | Up to 5 | Unlimited |
-| Audit log export | ❌ | ❌ | ✅ | ✅ |
-| Custom report branding | ❌ | ❌ | ❌ | ✅ |
-| Admin role (purge) | ❌ | ❌ | ❌ | ✅ |
-| SLA (99.9% uptime) | ❌ | ❌ | ❌ | ✅ |
-| Dedicated instance | ❌ | ❌ | ❌ | ✅ |
-| Token expiry | 24 h | 7 days | 30 days | 1 year |
-| Guide ingestion | ❌ | 10 guides | 100 guides | Unlimited |
-| Guide search results | 3 | 20 | 20 | 20 |
-| Interactive diagnostics (dtree) | ❌ | ✅ | ✅ | ✅ |
-| Diagnostic reports | ❌ | Markdown | PDF/HTML/MD | PDF/HTML/MD |
-| FMEA-to-tree generation | ❌ | ✅ | ✅ | ✅ |
-| PDF guide ingestion | ❌ | ✅ (counts toward guide limit) | ✅ | ✅ |
-| PDF OCR (scanned docs) | ❌ | ✅ | ✅ | ✅ |
-
----
-
 ## All 55 Tools
+
+See [rca-mcp.com/pricing](https://rca-mcp.com/pricing) for full tier details and limits.
 
 Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
 
