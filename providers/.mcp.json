@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "rca-mcp": {
+      "command": ".venv/Scripts/python.exe",
+      "args": ["server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RCA_MCP_TRANSPORT": "stdio",
+        "RCA_MCP_SECRET_KEY": "${env:RCA_MCP_SECRET_KEY}",
+        "RCA_MCP_STORAGE_DIR": "${workspaceFolder}/.rca_data",
+        "RCA_MCP_LOG_LEVEL": "WARNING"
+      }
+    }
+  }
+}

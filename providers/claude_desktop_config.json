@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "rca-mcp": {
+      "command": "python",
+      "args": ["REPLACE_WITH_ABSOLUTE_PATH/server.py"],
+      "env": {
+        "RCA_MCP_TRANSPORT": "stdio",
+        "RCA_MCP_SECRET_KEY": "REPLACE_WITH_SECRET",
+        "RCA_MCP_STORAGE_DIR": "REPLACE_WITH_ABSOLUTE_PATH/.rca_mcp_data",
+        "RCA_MCP_LOG_LEVEL": "WARNING"
+      }
+    }
+  }
+}
