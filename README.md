@@ -2,6 +2,13 @@
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![PulseMCP](https://img.shields.io/badge/PulseMCP-listed-orange)
 
+> **⚠️ Pre-release.** RCA-MCP is still in active development and testing.
+> The private API backend (`api.rca-mcp.com`) is not yet deployed, so this
+> connector cannot be used end-to-end yet. Tool schemas and documentation
+> below reflect the current development snapshot and may change before
+> the first public launch. Watch this repo or check
+> [rca-mcp.com](https://rca-mcp.com) for launch updates.
+
 ## What is RCA-MCP?
 
 The only MCP server purpose-built for causal Root Cause Analysis. 55 tools covering
