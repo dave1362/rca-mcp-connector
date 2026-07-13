@@ -142,22 +142,20 @@ TOOL_ROUTES = {
 )
 async def rca_auth_generate_token(params: AuthSetupInput) -> str:
     """
-    Generate a new raw API key and a signed, plan-aware JWT for authenticating
-    all other tools.
+    Generate a new raw API key and a signed JWT for authenticating all other
+    tools. Always issues the Free plan.
 
     Call this FIRST before using any other RCA-MCP tool.
     Store the returned raw_api_key securely — it cannot be recovered later.
     Pass the jwt_token as the 'token' field in every subsequent tool call.
 
-    Your plan is determined by your subscription — pass the plan that matches
-    your Paystack subscription. All feature limits (PyRCA, causal discovery,
-    batch size, report formats, roles, rate limit) are baked into the JWT at
-    issue time based on this plan.
+    Paid plans (Starter/Pro/Enterprise) are NOT requested here — they are
+    issued automatically, tied to your payment, the moment a Paystack
+    subscription payment succeeds. Upgrade at https://rca-mcp.com/upgrade.
 
     Args:
         params (AuthSetupInput):
             - roles: audit-only metadata for this API key (not authorization)
-            - plan: free | starter | pro | enterprise
             - key_id: optional explicit key ID (auto-generated if omitted)
             - key_label: optional human-readable label for this key
 

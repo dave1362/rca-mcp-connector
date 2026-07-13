@@ -22,13 +22,8 @@ class AuthSetupInput(BaseModel):
         default_factory=lambda: ["analyst"],
         description="Roles recorded against this API key for audit purposes. "
                      "Does NOT grant authorization — the JWT's actual roles and "
-                     "feature limits are derived entirely from 'plan'.",
+                     "feature limits are always Free plan for self-service keys.",
         max_length=5,
-    )
-    plan: str = Field(
-        default="free",
-        description="free | starter | pro | enterprise — determines the JWT's "
-                     "roles, rate limits, and feature access.",
     )
     key_id: Optional[str] = Field(
         default=None, max_length=64,
