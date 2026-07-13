@@ -57,6 +57,14 @@ class RevokeTokenInput(BaseModel):
     )
 
 
+class RefreshTokenInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str = Field(
+        ..., description="Your current JWT — may be expired, but must not be revoked"
+    )
+    client_id: str = Field(default="default")
+
+
 class HealthInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="JWT token from rca_auth_generate_token")

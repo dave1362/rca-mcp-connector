@@ -63,6 +63,7 @@ from .models import (
     PyRCASetupInput,
     QueryResultsInput,
     RandomWalkInput,
+    RefreshTokenInput,
     RemoveEdgeInput,
     RemoveNodeInput,
     ReportCompareInput,
@@ -83,6 +84,7 @@ TOOL_ROUTES = {
     "rca_auth_list_keys": "auth/list_keys",
     "rca_auth_rotate_key": "auth/rotate_key",
     "rca_auth_revoke_token": "auth/revoke_token",
+    "rca_auth_refresh_token": "auth/refresh_token",
     "rca_admin_health": "admin/health",
     "rca_admin_read_audit_log": "admin/read_audit_log",
     "rca_admin_purge_namespace": "admin/purge_namespace",
@@ -217,6 +219,36 @@ async def rca_auth_revoke_token(params: RevokeTokenInput) -> str:
         str: JSON confirmation with the revoked token's jti
     """
     return await _client.call("auth/revoke_token", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_auth_refresh_token",
+    annotations={'title': 'Refresh JWT Token', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_auth_refresh_token(params: RefreshTokenInput) -> str:
+    """
+    Renew a token before or after it expires, keeping the same plan and
+    identity — without needing a new payment event.
+
+    Token expiry is intentionally shorter than most plans' billing cycle
+    (e.g. Starter's 7-day token vs. its 30-day cycle), so call this
+    periodically -- or whenever a call fails with "Token has expired" --
+    to keep a long-lived session alive.
+
+    Accepts an already-expired token as long as it was never revoked.
+    Revocation, not expiry, is what actually gates a cancelled
+    subscription: cancelling immediately revokes your token independent
+    of its clock, so a merely time-expired token still refreshes at its
+    current plan, but a cancelled one won't.
+
+    Args:
+        params (RefreshTokenInput): token (current, possibly expired), client_id
+
+    Returns:
+        str: JSON with a new raw_api_key, jwt_token, plan, and expires_in_hours,
+             matching the plan of the token you presented
+    """
+    return await _client.call("auth/refresh_token", params.model_dump())
 
 
 @mcp.tool(
