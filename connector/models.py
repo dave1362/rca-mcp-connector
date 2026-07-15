@@ -21,13 +21,14 @@ class AuthSetupInput(BaseModel):
     roles: List[str] = Field(
         default_factory=lambda: ["analyst"],
         description="Roles recorded against this API key for audit purposes. "
-                     "Does NOT grant authorization — the JWT's actual roles and "
-                     "feature limits are always Free plan for self-service keys.",
+                     "Does NOT grant authorization — the API key's actual roles "
+                     "and feature limits are always Free plan for self-service keys.",
         max_length=5,
     )
     key_id: Optional[str] = Field(
         default=None, max_length=64,
-        description="Optional explicit key ID (auto-generated if omitted)",
+        description="Accepted for backward compatibility, ignored — DB-issued "
+                     "keys use their own server-generated ID, not a caller-chosen one.",
     )
     key_label: str = Field(
         default="", max_length=64,
@@ -37,43 +38,35 @@ class AuthSetupInput(BaseModel):
 
 class ListKeysInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token (admin role required)")
+    token: str = Field(..., description="API key (admin role required)")
     client_id: str = Field(default="default")
 
 
 class RotateKeyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token (admin role required)")
+    token: str = Field(..., description="API key (admin role required)")
     client_id: str = Field(default="default")
     key_id: str = Field(..., description="Existing key ID to rotate")
 
 
 class RevokeTokenInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token to authenticate this request")
+    token: str = Field(..., description="API key to authenticate this request")
     client_id: str = Field(default="default")
-    token_to_revoke: str = Field(
-        ..., description="The JWT to invalidate (can be the same as 'token')"
+    key_id_to_revoke: str = Field(
+        ..., description="UUID of one of your own keys to deactivate (can be the same key presented in 'token')"
     )
-
-
-class RefreshTokenInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    token: str = Field(
-        ..., description="Your current JWT — may be expired, but must not be revoked"
-    )
-    client_id: str = Field(default="default")
 
 
 class HealthInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token from rca_auth_generate_token")
+    token: str = Field(..., description="API key from rca_auth_generate_token")
     client_id: str = Field(default="default", description="Client identifier for rate limiting")
 
 
 class AuditInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token")
+    token: str = Field(..., description="API key")
     client_id: str = Field(default="default")
     hour_key: Optional[str] = Field(
         default=None,
@@ -83,7 +76,7 @@ class AuditInput(BaseModel):
 
 class PurgeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token")
+    token: str = Field(..., description="API key")
     client_id: str = Field(default="default")
     namespace: str = Field(
         ..., description="One of: graphs, models, results", pattern="^(graphs|models|results)$"
@@ -93,7 +86,7 @@ class PurgeInput(BaseModel):
 
 class GraphCreateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="JWT token")
+    token: str = Field(..., description="API key")
     client_id: str = Field(default="default")
     name: str = Field(..., min_length=1, max_length=128, description="Graph name")
     description: str = Field(default="", max_length=512)

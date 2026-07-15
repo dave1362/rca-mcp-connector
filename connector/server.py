@@ -1,7 +1,7 @@
 """
 RCA-MCP Public Connector — FastMCP Server
 ============================================
-Thin MCP server exposing all 43 RCA-MCP tool names and schemas.
+Thin MCP server exposing all 55 RCA-MCP tool names and schemas.
 Every tool is a pure forwarder to the private RCA-MCP API via
 RCAMCPClient — no analytical logic, no security enforcement, no
 storage. All of that lives in the private core and is enforced
@@ -63,7 +63,6 @@ from .models import (
     PyRCASetupInput,
     QueryResultsInput,
     RandomWalkInput,
-    RefreshTokenInput,
     RemoveEdgeInput,
     RemoveNodeInput,
     ReportCompareInput,
@@ -84,7 +83,6 @@ TOOL_ROUTES = {
     "rca_auth_list_keys": "auth/list_keys",
     "rca_auth_rotate_key": "auth/rotate_key",
     "rca_auth_revoke_token": "auth/revoke_token",
-    "rca_auth_refresh_token": "auth/refresh_token",
     "rca_admin_health": "admin/health",
     "rca_admin_read_audit_log": "admin/read_audit_log",
     "rca_admin_purge_namespace": "admin/purge_namespace",
@@ -140,16 +138,17 @@ TOOL_ROUTES = {
 
 @mcp.tool(
     name="rca_auth_generate_token",
-    annotations={'title': 'Generate API Key & JWT', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
+    annotations={'title': 'Generate API Key', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
 )
 async def rca_auth_generate_token(params: AuthSetupInput) -> str:
     """
-    Generate a new raw API key and a signed JWT for authenticating all other
-    tools. Always issues the Free plan.
+    Generate a new API key for authenticating all other tools. Always
+    issues the Free plan.
 
     Call this FIRST before using any other RCA-MCP tool.
-    Store the returned raw_api_key securely — it cannot be recovered later.
-    Pass the jwt_token as the 'token' field in every subsequent tool call.
+    Store the returned api_key securely — it cannot be recovered later.
+    Pass it as the 'token' field in every subsequent tool call. It does
+    not expire.
 
     Paid plans (Starter/Pro/Enterprise) are NOT requested here — they are
     issued automatically, tied to your payment, the moment a Paystack
@@ -158,11 +157,11 @@ async def rca_auth_generate_token(params: AuthSetupInput) -> str:
     Args:
         params (AuthSetupInput):
             - roles: audit-only metadata for this API key (not authorization)
-            - key_id: optional explicit key ID (auto-generated if omitted)
+            - key_id: accepted for backward compatibility, ignored
             - key_label: optional human-readable label for this key
 
     Returns:
-        str: JSON with raw_api_key, key_id, jwt_token, plan, roles, expires_in_hours
+        str: JSON with api_key, plan, roles, instruction
     """
     return await _client.call("auth/generate_token", params.model_dump())
 
@@ -173,12 +172,12 @@ async def rca_auth_generate_token(params: AuthSetupInput) -> str:
 )
 async def rca_auth_list_keys(params: ListKeysInput) -> str:
     """
-    List all registered API key IDs and their metadata. Never returns raw
-    or hashed key material. Admin role required.
+    List your own API keys and their metadata. Never returns raw or
+    hashed key material. Admin role required (Enterprise plan).
 
     Returns:
-        str: JSON with total and a list of {key_id, subject, roles, plan,
-             created_at, active}
+        str: JSON with total and a list of {key_id, label, plan_at_issue,
+             created_at, last_used_at, is_active}
     """
     return await _client.call("auth/list_keys", params.model_dump())
 
@@ -189,66 +188,37 @@ async def rca_auth_list_keys(params: ListKeysInput) -> str:
 )
 async def rca_auth_rotate_key(params: RotateKeyInput) -> str:
     """
-    Deactivate an existing API key and generate a replacement with the
-    same subject and roles. Admin role required.
+    Deactivate one of your existing API keys and generate a replacement
+    for the same account. Admin role required (Enterprise plan).
 
     Args:
-        params (RotateKeyInput): key_id of the key to rotate
+        params (RotateKeyInput): key_id of your existing key to rotate
 
     Returns:
-        str: JSON with old_key_id, new_key_id, raw_api_key, subject, roles
+        str: JSON with old_key_id, new_key_id, api_key (new raw key)
     """
     return await _client.call("auth/rotate_key", params.model_dump())
 
 
 @mcp.tool(
     name="rca_auth_revoke_token",
-    annotations={'title': 'Revoke JWT Token', 'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True, 'openWorldHint': False},
+    annotations={'title': 'Revoke API Key', 'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True, 'openWorldHint': False},
 )
 async def rca_auth_revoke_token(params: RevokeTokenInput) -> str:
     """
-    Revoke a JWT token immediately, before its natural expiry.
-    Useful when a token is compromised or when logging out a session.
+    Deactivate one of your own API keys immediately — useful when a key
+    is compromised or an integration is being retired.
 
     Args:
         params (RevokeTokenInput):
-            - token: JWT to authenticate this call
-            - token_to_revoke: JWT to invalidate (may be the same token)
+            - token: your API key, to authenticate this call
+            - key_id_to_revoke: UUID of the key to deactivate (may be
+              the same key presented in 'token')
 
     Returns:
-        str: JSON confirmation with the revoked token's jti
+        str: JSON confirmation with the revoked key_id
     """
     return await _client.call("auth/revoke_token", params.model_dump())
-
-
-@mcp.tool(
-    name="rca_auth_refresh_token",
-    annotations={'title': 'Refresh JWT Token', 'readOnlyHint': False, 'destructiveHint': False, 'idempotentHint': False, 'openWorldHint': False},
-)
-async def rca_auth_refresh_token(params: RefreshTokenInput) -> str:
-    """
-    Renew a token before or after it expires, keeping the same plan and
-    identity — without needing a new payment event.
-
-    Token expiry is intentionally shorter than most plans' billing cycle
-    (e.g. Starter's 7-day token vs. its 30-day cycle), so call this
-    periodically -- or whenever a call fails with "Token has expired" --
-    to keep a long-lived session alive.
-
-    Accepts an already-expired token as long as it was never revoked.
-    Revocation, not expiry, is what actually gates a cancelled
-    subscription: cancelling immediately revokes your token independent
-    of its clock, so a merely time-expired token still refreshes at its
-    current plan, but a cancelled one won't.
-
-    Args:
-        params (RefreshTokenInput): token (current, possibly expired), client_id
-
-    Returns:
-        str: JSON with a new raw_api_key, jwt_token, plan, and expires_in_hours,
-             matching the plan of the token you presented
-    """
-    return await _client.call("auth/refresh_token", params.model_dump())
 
 
 @mcp.tool(
@@ -278,7 +248,7 @@ async def rca_admin_read_audit_log(params: AuditInput) -> str:
 
     Args:
         params (AuditInput):
-            - token: JWT
+            - token: API key
             - hour_key: YYYYMMDD_HH (defaults to current UTC hour)
 
     Returns:
