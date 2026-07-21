@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rca-mcp-connector"
+version = "0.1.0"
+description = "RCA-MCP MCP connector — causal root-cause analysis, 55 tools, works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain and more."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "davetj" }]
+dependencies = [
+    "mcp[cli]>=1.9.0,<2.0",
+    "fastmcp>=2.3.0,<3.0",
+    "pydantic>=2.9.0,<3.0",
+    "httpx>=0.27.0,<1.0",
+    "python-dotenv>=1.0.1,<2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/dave1362/rca-mcp-connector"
+
+[project.scripts]
+rca-mcp-connector = "connector.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["connector"]

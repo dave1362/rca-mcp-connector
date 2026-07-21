@@ -1,5 +1,7 @@
 # RCA-MCP Connector
 
+<!-- mcp-name: io.github.dave1362/rca-mcp-connector -->
+
 ![Python](https://img.shields.io/badge/python-3.12+-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![PulseMCP](https://img.shields.io/badge/PulseMCP-listed-orange)
 
 > **⚠️ Early access.** RCA-MCP's backend is live and this connector has been
