@@ -109,120 +109,6 @@ OpenRouter, Claude Desktop).
 
 ---
 
-## All 55 Tools
-
-See [rca-mcp.com/pricing](https://rca-mcp.com/pricing) for full tier details and limits.
-
-Legend: ✅ All plans · 🌟 Starter+ · 💎 Pro+ · 👑 Enterprise only
-
-### Group A — Causal Graph
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_graph_create` | ✅ | Create an empty causal DAG |
-| `rca_graph_get` | ✅ | Retrieve a graph as JSON / DOT / adjacency |
-| `rca_graph_score` | ✅ | Structural quality scoring |
-| `rca_graph_discover` | 💎 | Auto-discover causal structure from data (PC-algorithm) |
-| `rca_graph_merge` | 💎 | Merge two graphs for cross-system RCA |
-| `rca_graph_list_versions` | 🌟 | List historical graph snapshots |
-| `rca_graph_restore_version` | 👑 | Roll back to a historical version (admin) |
-| `rca_graph_delete` | 👑 | Delete a graph permanently (admin) |
-
-### Group B — RCA Models
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_model_create` | ✅ | Register a model spec (up to plan's model limit) |
-| `rca_model_list` | ✅ | List registered models |
-| `rca_model_update_status` | ✅ | Advance model lifecycle |
-| `rca_model_validate` | ✅ | Validate on hold-out data |
-| `rca_model_delete` | 👑 | Delete a model (admin) |
-
-### Group C — Analysis
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_analysis_run` | ✅ | Run RCA, get ranked root causes |
-| `rca_analysis_run_async` | 💎 | Submit a long-running analysis (returns task_id) |
-| `rca_analysis_poll_task` | 💎 | Poll an async task's status |
-| `rca_analysis_ensemble` | 💎 | Combine 2-5 models via weighted-vote consensus |
-| `rca_analysis_get_result` | ✅ | Retrieve a stored result |
-| `rca_analysis_list_results` | ✅ | Paginated result listing |
-| `rca_analysis_query_results` | ✅ | Filter results by family/confidence/tags |
-| `rca_analysis_compare` | ✅ | Cross-model consensus comparison |
-| `rca_analysis_explain` | ✅ | Narrative explanation of a result |
-| `rca_analysis_batch` | 🌟 | Batch analysis (5 incidents Starter, 20 Pro+) |
-
-### Group D — Graph Operations
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_graph_add_node` | ✅ | Add a typed node |
-| `rca_graph_remove_node` | ✅ | Remove a node |
-| `rca_graph_add_edge` | ✅ | Add a directed causal edge (cycle-safe) |
-| `rca_graph_remove_edge` | ✅ | Remove an edge |
-| `rca_graph_score_paths` | ✅ | Rank causal paths to a target node |
-| `rca_graph_markov_blanket` | ✅ | Get parents/children/co-parents of a node |
-
-### Group E — Admin & Auth
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_auth_generate_token` | ✅ | Generate API key + JWT — call this first |
-| `rca_auth_revoke_token` | 👑 | Invalidate a JWT before expiry (admin) |
-| `rca_auth_list_keys` | 👑 | List API keys (admin + Pro+ multi-key feature) |
-| `rca_auth_rotate_key` | 👑 | Rotate an API key (admin + Pro+ multi-key feature) |
-| `rca_admin_health` | ✅ | Server health snapshot |
-| `rca_admin_read_audit_log` | ✅ | Read structured audit entries |
-| `rca_admin_purge_namespace` | 👑 | Delete all records in a namespace (admin) |
-| `rca_admin_show_plan_info` | ✅ | Show current plan, limits, and upgrade options |
-
-### Group F — Reports & Providers
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_report_generate` | ✅/🌟/💎 | Markdown all plans; HTML/PDF Starter+; Excel Pro+ |
-| `rca_report_compare` | ✅/🌟 | Comparative report; Markdown all, HTML Starter+ |
-| `rca_provider_list_configs` | ✅ | Setup instructions for any of the 9 providers |
-
-### Group G — PyRCA Algorithms [PyRCA — BSD-3-Clause]
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_pyrca_epsilon_diagnosis` | 🌟 | z-score anomalous metric identification |
-| `rca_pyrca_random_walk` | 🌟 | Personalised PageRank root cause localisation |
-| `rca_pyrca_ht_diagnosis` | 🌟 | Hypothesis testing with descendant adjustment |
-| `rca_pyrca_validate_setup` | ✅ | Check PyRCA strategy and licence compliance |
-
-### Group H — Equipment Knowledge (Phase 9)
-
-| Tool | Plan | Description |
-|---|---|---|
-| `rca_guide_ingest` | 🌟 | Ingest a troubleshooting guide (markdown/plain/json_dtree) |
-| `rca_guide_search` | ✅ | Search guides by symptom (TF-IDF); Free capped at 3 results |
-| `rca_guide_get` | ✅ | Retrieve a full guide or a specific section |
-| `rca_guide_list` | ✅ | List ingested guides with equipment_type/tag filters |
-| `rca_dtree_start` | 🌟 | Begin an interactive diagnostic decision-tree session |
-| `rca_dtree_answer` | 🌟 | Answer a diagnostic question; returns next question or diagnosis |
-| `rca_dtree_list_sessions` | 🌟 | List diagnostic sessions with equipment/status filters |
-| `rca_guide_generate_report` | 🌟/💎 | Maintenance report from a resolved session; Markdown Starter+, PDF/HTML Pro+ |
-| `rca_dtree_generate_from_fmea` | 🌟 | Auto-generate a decision tree from FMEA results |
-| `rca_guide_pdf_preview` | 🌟 | Preview PDF quality before ingestion |
-| `rca_guide_ingest_pdf` | 🌟 | Parse a PDF equipment manual → knowledge base |
-
-Ships with 4 built-in sample guides (pump, vacuum interface valve, ML pipeline,
-CFD solver) auto-loaded on first startup, and supports 26 equipment types.
-PDF ingestion supports 4 parsing strategies (text_native, ocr, table, mixed).
-
----
-
-## Get an API Key
-
-[rca-mcp.com/upgrade](https://rca-mcp.com/upgrade) — Free tier available, plans from
-**$19/month** (Starter), **$79/month** (Pro), **$399/month** (Enterprise).
-
----
-
 ## Third-Party Licences
 
 **PyRCA (Salesforce):** BSD-3-Clause
@@ -243,6 +129,6 @@ source code, per the private API's `models/pyrca_adapter.py`.
   author = {davetj},
   year   = {2026},
   url    = {https://github.com/dave1362/rca-mcp-connector},
-  note   = {v3.0.0}
+  note   = {v4.1.9}
 }
 ```
