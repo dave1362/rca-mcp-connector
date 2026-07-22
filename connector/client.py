@@ -10,6 +10,7 @@ depth, security enforcement, and tier gating.
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict
 
 import httpx
@@ -26,8 +27,21 @@ class RCAMCPClient:
         base_url: str | None = None,
         api_key: str | None = None,
     ):
-        self._base = (base_url or os.environ["RCA_MCP_API_URL"]).rstrip("/")
-        self._api_key = api_key or os.environ["RCA_MCP_API_KEY"]
+        # Never raise here -- construction (and therefore importing this
+        # module / starting the MCP server) must succeed even with no env
+        # vars set, so the server can be installed/inspected/started
+        # before a real backend URL and API key are configured. A missing
+        # value degrades to a clear per-call error from call() below
+        # instead of crashing the whole process at import time.
+        self._base = (base_url or os.environ.get("RCA_MCP_API_URL", "")).rstrip("/")
+        self._api_key = api_key or os.environ.get("RCA_MCP_API_KEY", "")
+        if not self._base or not self._api_key:
+            print(
+                "RCA-MCP: RCA_MCP_API_URL and/or RCA_MCP_API_KEY not set. "
+                "Tool calls will fail until both are configured -- see "
+                "https://github.com/dave1362/rca-mcp-connector#quick-start-2-minutes",
+                file=sys.stderr,
+            )
         self._headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
