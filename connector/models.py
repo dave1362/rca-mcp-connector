@@ -548,6 +548,14 @@ class GuideListInput(BaseModel):
     tags: Optional[List[str]] = Field(default=None)
 
 
+class GuideDeleteInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    token: str
+    client_id: str = Field(default="default")
+    guide_id: str = Field(..., description="Guide ID to delete")
+    confirm: bool = Field(..., description="Must be true to actually delete")
+
+
 class DTreeStartInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str

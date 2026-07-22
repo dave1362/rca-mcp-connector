@@ -37,6 +37,7 @@ from .models import (
     GraphMergeInput,
     GraphRestoreVersionInput,
     GraphScoreInput,
+    GuideDeleteInput,
     GuideGetInput,
     GuideIngestInput,
     GuideListInput,
@@ -127,6 +128,7 @@ TOOL_ROUTES = {
     "rca_guide_search": "guide/search",
     "rca_guide_get": "guide/get",
     "rca_guide_list": "guide/list",
+    "rca_guide_delete": "guide/delete",
     "rca_dtree_start": "dtree/start",
     "rca_dtree_answer": "dtree/answer",
     "rca_dtree_list_sessions": "dtree/list_sessions",
@@ -1087,6 +1089,24 @@ async def rca_guide_list(params: GuideListInput) -> str:
              name, version, tags, section_count, created_at)
     """
     return await _client.call("guide/list", params.model_dump())
+
+
+@mcp.tool(
+    name="rca_guide_delete",
+    annotations={'title': 'Delete Equipment Guide', 'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': False, 'openWorldHint': False},
+)
+async def rca_guide_delete(params: GuideDeleteInput) -> str:
+    """
+    👑 Enterprise (admin role) — Permanently delete one of your own equipment
+    guides. Requires confirm=true.
+
+    Args:
+        params (GuideDeleteInput): guide_id, confirm
+
+    Returns:
+        str: JSON {"deleted": guide_id} on success
+    """
+    return await _client.call("guide/delete", params.model_dump())
 
 
 @mcp.tool(

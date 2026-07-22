@@ -2,17 +2,17 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.dave1362/rca-mcp-connector",
   "title": "RCA-MCP",
-  "description": "Causal root-cause analysis MCP server -- 55 tools across graphs, RCA models, PyRCA.",
+  "description": "Causal root-cause analysis MCP server -- 56 tools across graphs, RCA models, PyRCA.",
   "repository": {
     "url": "https://github.com/dave1362/rca-mcp-connector",
     "source": "github"
   },
-  "version": "4.1.10",
+  "version": "4.1.11",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "rca-mcp-connector",
-      "version": "4.1.10",
+      "version": "4.1.11",
       "transport": {
         "type": "stdio"
       },

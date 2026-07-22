@@ -12,7 +12,7 @@
 
 ## What is RCA-MCP?
 
-The only MCP server purpose-built for causal Root Cause Analysis. 55 tools covering
+The only MCP server purpose-built for causal Root Cause Analysis. 56 tools covering
 causal graph construction, 13 RCA model families (including Salesforce PyRCA
 algorithms), multi-model consensus, and PDF/HTML/Excel/Markdown report generation.
 Works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain — 9 providers.
@@ -129,6 +129,6 @@ source code, per the private API's `models/pyrca_adapter.py`.
   author = {davetj},
   year   = {2026},
   url    = {https://github.com/dave1362/rca-mcp-connector},
-  note   = {v4.1.9}
+  note   = {v4.1.11}
 }
 ```
