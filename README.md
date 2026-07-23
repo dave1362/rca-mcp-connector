@@ -13,24 +13,26 @@
 ## What is RCA-MCP?
 
 The only MCP server purpose-built for causal Root Cause Analysis. 56 tools covering
-causal graph construction, 13 RCA model families (including Salesforce PyRCA
-algorithms), multi-model consensus, and PDF/HTML/Excel/Markdown report generation.
-Works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain — 9 providers.
+causal graph construction, 10 RCA model families plus 3 dedicated PyRCA algorithms
+(Salesforce PyRCA, BSD-3-Clause), multi-model consensus, and PDF/HTML/Excel/Markdown
+report generation. Works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain,
+Cursor — 10 providers.
 
 ---
 
 ## Quick Start (2 minutes)
 
+`rca-mcp-connector` is a published PyPI package — no clone needed. Point any MCP
+client at it with `uvx` (or `pip install rca-mcp-connector` if you'd rather manage
+the install yourself):
+
 ```bash
-git clone https://github.com/dave1362/rca-mcp-connector.git
-cd rca-mcp-connector
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env: set RCA_MCP_API_KEY to a key created via the dashboard below
+uvx rca-mcp-connector
 ```
 
-Get an API key at [rca-mcp.pages.dev](https://rca-mcp.pages.dev) — a free tier is
-available, no credit card required.
+Get a free API key at [rca-mcp.pages.dev](https://rca-mcp.pages.dev) — no credit
+card required — then set `RCA_MCP_API_KEY` in your MCP client's config (examples
+below).
 
 ---
 
@@ -42,8 +44,8 @@ Add to `.mcp.json` in your workspace root:
 {
   "mcpServers": {
     "rca-mcp": {
-      "command": "python",
-      "args": ["/absolute/path/to/rca-mcp-connector/connector/server.py"],
+      "command": "uvx",
+      "args": ["rca-mcp-connector"],
       "env": {
         "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
         "RCA_MCP_API_KEY": "your_api_key_here"
@@ -69,9 +71,12 @@ import asyncio
 async def main():
     async with MCPServerStdio(
         params={
-            "command": "python",
-            "args": ["connector/server.py"],
-            "env": {"RCA_MCP_API_KEY": "your_key"},
+            "command": "uvx",
+            "args": ["rca-mcp-connector"],
+            "env": {
+                "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
+                "RCA_MCP_API_KEY": "your_api_key_here",
+            },
         }
     ) as rca_server:
         agent = Agent(name="RCA Agent", model="gpt-4o", mcp_servers=[rca_server])
@@ -92,8 +97,12 @@ import asyncio
 async def main():
     async with MultiServerMCPClient({
         "rca-mcp": {
-            "command": "python", "args": ["connector/server.py"],
-            "env": {"RCA_MCP_API_KEY": "your_key"}, "transport": "stdio",
+            "command": "uvx", "args": ["rca-mcp-connector"],
+            "env": {
+                "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
+                "RCA_MCP_API_KEY": "your_api_key_here",
+            },
+            "transport": "stdio",
         }
     }) as client:
         tools = await client.get_tools()

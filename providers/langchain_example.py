@@ -15,9 +15,12 @@ import asyncio
 async def main():
     async with MultiServerMCPClient({
         "rca-mcp": {
-            "command": "python",
-            "args": ["/path/to/rca_mcp/server.py"],
-            "env": {"RCA_MCP_TRANSPORT": "stdio", "RCA_MCP_SECRET_KEY": "secret"},
+            "command": "uvx",
+            "args": ["rca-mcp-connector"],
+            "env": {
+                "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
+                "RCA_MCP_API_KEY": "your_api_key_here",
+            },
             "transport": "stdio",
         }
     }) as client:

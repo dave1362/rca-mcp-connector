@@ -12,11 +12,11 @@ import asyncio
 async def main():
     async with MCPServerStdio(
         params={
-            "command": "python",
-            "args": ["/path/to/rca_mcp/server.py"],
+            "command": "uvx",
+            "args": ["rca-mcp-connector"],
             "env": {
-                "RCA_MCP_TRANSPORT": "stdio",
-                "RCA_MCP_SECRET_KEY": "your_secret",
+                "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
+                "RCA_MCP_API_KEY": "your_api_key_here",
             },
         }
     ) as rca_server:

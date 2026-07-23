@@ -1,14 +1,11 @@
 {
   "mcpServers": {
     "rca-mcp": {
-      "command": ".venv/Scripts/python.exe",
-      "args": ["server.py"],
-      "cwd": "${workspaceFolder}",
+      "command": "uvx",
+      "args": ["rca-mcp-connector"],
       "env": {
-        "RCA_MCP_TRANSPORT": "stdio",
-        "RCA_MCP_SECRET_KEY": "${env:RCA_MCP_SECRET_KEY}",
-        "RCA_MCP_STORAGE_DIR": "${workspaceFolder}/.rca_data",
-        "RCA_MCP_LOG_LEVEL": "WARNING"
+        "RCA_MCP_API_URL": "https://rcamcp-production.up.railway.app",
+        "RCA_MCP_API_KEY": "your_api_key_here"
       }
     }
   }
