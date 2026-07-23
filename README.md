@@ -129,6 +129,6 @@ source code, per the private API's `models/pyrca_adapter.py`.
   author = {davetj},
   year   = {2026},
   url    = {https://github.com/dave1362/rca-mcp-connector},
-  note   = {v4.1.11}
+  note   = {v4.1.12}
 }
 ```
