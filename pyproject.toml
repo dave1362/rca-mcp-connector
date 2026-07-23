@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rca-mcp-connector"
-version = "4.1.12"
+version = "4.1.13"
 description = "RCA-MCP MCP connector — causal root-cause analysis, 56 tools, works with Claude, Ollama, Groq, OpenAI, Gemini, LangChain and more."
 readme = "README.md"
 requires-python = ">=3.12"
