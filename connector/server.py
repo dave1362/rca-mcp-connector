@@ -246,15 +246,28 @@ async def rca_admin_health(params: HealthInput) -> str:
 )
 async def rca_admin_read_audit_log(params: AuditInput) -> str:
     """
-    Read structured audit log entries for a given hour bucket.
+    Read YOUR OWN structured audit log entries for a given hour bucket —
+    one entry per tool call you made, showing which tool ran, when, and
+    whether it succeeded or was denied.
+
+    Requires the admin role on your API key; self-service Free/Starter/
+    Pro keys default to lower roles and will be denied — use
+    rca_admin_show_plan_info to check your own plan/role first. Never
+    returns another user's activity, regardless of plan.
+
+    Use this to investigate why a call was denied or confirm a
+    destructive action (e.g. rca_graph_delete) actually ran — it's an
+    hourly snapshot, not a live stream, so it's not suited to
+    real-time monitoring.
 
     Args:
         params (AuditInput):
-            - token: API key
-            - hour_key: YYYYMMDD_HH (defaults to current UTC hour)
+            - hour_key: hour bucket as YYYYMMDD_HH, e.g. "20260803_14"
+              (defaults to the current UTC hour if omitted)
 
     Returns:
-        str: JSON list of audit entries
+        str: JSON {hour_key, entry_count, entries: [{tool, timestamp,
+             outcome, ...}, ...]}
     """
     return await _client.call("admin/read_audit_log", params.model_dump())
 
@@ -443,6 +456,25 @@ async def rca_graph_add_node(params: NodeOpInput) -> str:
 async def rca_graph_remove_node(params: RemoveNodeInput) -> str:
     """
     Remove a node and all its incident edges from a causal graph.
+    Destructive and irreversible via this tool — undo only by
+    rebuilding the node/edges with rca_graph_add_node +
+    rca_graph_add_edge, or restoring an earlier version with
+    rca_graph_restore_version if versioning is available on your plan.
+
+    Use this to correct a mistaken node, not to prune weak paths — for
+    that, adjust edge weights instead, or use rca_graph_score_paths
+    first to see which paths actually matter before deciding what to
+    remove.
+
+    Args:
+        params (RemoveNodeInput):
+            - graph_id: the graph to modify
+            - name: exact node name (case-sensitive) — use
+              rca_graph_get first if you're not sure of the exact name
+
+    Returns:
+        str: JSON {removed_node, total_nodes} (post-removal count), or
+             a not_found/value error if the node doesn't exist
     """
     return await _client.call("graph/remove_node", params.model_dump())
 
@@ -471,7 +503,27 @@ async def rca_graph_add_edge(params: EdgeOpInput) -> str:
 )
 async def rca_graph_remove_edge(params: RemoveEdgeInput) -> str:
     """
-    Remove a directed edge from a causal graph.
+    Remove a directed edge (source → target) from a causal graph.
+    Destructive and irreversible via this tool — undo by re-adding the
+    edge with rca_graph_add_edge, or restoring an earlier version with
+    rca_graph_restore_version.
+
+    Use this when an edge was added in error or a causal hypothesis is
+    disproven. Use rca_graph_remove_node instead if you want the node
+    itself gone — that already removes all its edges, so you don't
+    need to remove them individually first.
+
+    Args:
+        params (RemoveEdgeInput):
+            - graph_id: the graph to modify
+            - source, target: exact node names (case-sensitive); the
+              edge must currently exist — check with rca_graph_get if
+              unsure
+
+    Returns:
+        str: JSON {removed_edge: "source → target"}, or a
+             not_found/value error if the edge or either node doesn't
+             exist
     """
     return await _client.call("graph/remove_edge", params.model_dump())
 
@@ -482,14 +534,29 @@ async def rca_graph_remove_edge(params: RemoveEdgeInput) -> str:
 )
 async def rca_graph_score_paths(params: PathScoreInput) -> str:
     """
-    Find and rank all causal paths from root nodes to a target incident node.
-    Score = geometric-mean(edge_weights) × avg_confidence / sqrt(hops).
+    Find and rank all causal paths from every root (no-incoming-edge)
+    node to a target incident node. Score = geometric-mean(edge
+    weights) × avg_confidence / sqrt(hops) — shorter, higher-weight,
+    higher-confidence paths rank above longer or weaker ones.
+
+    Use this on a graph you've built by hand (rca_graph_create +
+    rca_graph_add_edge) to see which manually-asserted causal chains
+    are strongest. For a data-driven ranking instead of a hand-built
+    graph, use rca_analysis_run with a model family like
+    granger_causality or dowhy_causal_inference instead.
 
     Args:
-        params (PathScoreInput): graph_id, target_node, top_k
+        params (PathScoreInput):
+            - graph_id: the graph to search
+            - target_node: the incident/effect node to trace backward
+              from (must exist in the graph; check with rca_graph_get)
+            - top_k: how many top-ranked paths to return, 1-50
+              (default 10)
 
     Returns:
-        str: JSON list of ScoredPath objects ranked by score descending
+        str: JSON {target_node, paths_found, top_paths: [ScoredPath,
+             ...]} ranked by score descending; empty list if no path
+             from any root node reaches the target
     """
     return await _client.call("graph/score_paths", params.model_dump())
 
@@ -558,13 +625,27 @@ async def rca_model_list(params: ModelListInput) -> str:
 )
 async def rca_model_update_status(params: ModelStatusInput) -> str:
     """
-    Advance a model through its lifecycle: draft → trained → validated → deployed.
+    Set a model's lifecycle status directly to any of: draft, trained,
+    validated, deployed, deprecated, failed. This is a direct field
+    update, not a guarded state machine — there is no enforced order
+    (e.g. nothing stops setting "deployed" on a model that was never
+    validated); that discipline is on the caller, not the API.
+
+    Use "deprecated" to retire a model without deleting it (its past
+    results stay queryable via rca_analysis_get_result); use "failed"
+    to flag one that shouldn't be used, e.g. after rca_model_validate
+    reports poor hold-out performance. Use rca_model_delete instead if
+    you want the model gone entirely, not just marked.
 
     Args:
-        params (ModelStatusInput): model_id, new_status
+        params (ModelStatusInput):
+            - model_id: the model to update
+            - new_status: one of draft | trained | validated |
+              deployed | deprecated | failed
 
     Returns:
-        str: JSON updated model spec
+        str: JSON {model_id, status}, or a not_found error if the
+             model doesn't exist or belongs to another user
     """
     return await _client.call("model/update_status", params.model_dump())
 
@@ -627,6 +708,20 @@ async def rca_analysis_run(params: RunAnalysisInput) -> str:
 async def rca_analysis_get_result(params: GetResultInput) -> str:
     """
     Retrieve a previously saved RCA result by result_id.
+
+    Use this after rca_analysis_run (or rca_analysis_run_async +
+    rca_analysis_poll_task) to re-fetch a result you already have the
+    ID for — e.g. to hand it to rca_report_generate or
+    rca_analysis_compare later. If you don't have a result_id yet, use
+    rca_analysis_list_results to find one first.
+
+    Args:
+        params (GetResultInput):
+            - result_id: from a prior analysis call's response
+
+    Returns:
+        str: JSON of the full stored RCAResult, or a not_found error
+             if the ID doesn't exist or belongs to another user
     """
     return await _client.call("analysis/get_result", params.model_dump())
 
@@ -637,13 +732,17 @@ async def rca_analysis_get_result(params: GetResultInput) -> str:
 )
 async def rca_analysis_list_results(params: ListResultsInput) -> str:
     """
-    List all stored RCA result IDs with pagination.
+    List all of YOUR stored RCA result IDs, newest first, with
+    pagination. Returns IDs and a count only — not the results
+    themselves; follow up with rca_analysis_get_result for the full
+    content of any one of them.
 
     Args:
-        params (ListResultsInput): limit (1–100), offset
+        params (ListResultsInput): limit (1-100, default 20), offset
+            (skip this many from the newest, for paging past `limit`)
 
     Returns:
-        str: JSON with result_ids, total, has_more
+        str: JSON {total, count, offset, result_ids: [...], has_more}
     """
     return await _client.call("analysis/list_results", params.model_dump())
 
@@ -710,14 +809,28 @@ async def rca_analysis_explain(params: ExplainInput) -> str:
 )
 async def rca_analysis_batch(params: BatchAnalysisInput) -> str:
     """
-    Run RCA analysis over a batch of incidents using the same model.
-    Returns a summary with per-incident results and cross-incident root cause ranking.
+    Run the same RCA model over multiple incidents in one call, then
+    rank which root causes recur most often across all of them — use
+    this to spot a systemic cause behind several similar incidents,
+    not just one.
+
+    Requires Starter+ (Free plan cannot batch at all; Starter allows
+    up to 5 incidents per call, Pro+ up to 20 — call
+    rca_admin_show_plan_info to check your own limit). For a single
+    incident, use rca_analysis_run instead — it's simpler and doesn't
+    need the plan tier.
 
     Args:
-        params (BatchAnalysisInput): model_id, incidents (list of payload dicts, max 20)
+        params (BatchAnalysisInput):
+            - model_id: an existing model, applied identically to
+              every incident
+            - incidents: 1-20 payload dicts (capped by your plan),
+              each matching the same shape rca_analysis_run expects
+              for this model family
 
     Returns:
-        str: JSON with per_incident results, cross_incident_ranking
+        str: JSON {per_incident: [{incident_index, result_id,
+             top_cause, confidence}, ...], cross_incident_ranking}
     """
     return await _client.call("analysis/batch", params.model_dump())
 
@@ -938,7 +1051,16 @@ async def rca_provider_list_configs(params: ProviderConfigInput) -> str:
 )
 async def rca_pyrca_validate_setup(params: PyRCASetupInput) -> str:
     """
-    Validate the PyRCA integration setup and report which strategy is active.
+    Validate the PyRCA integration setup and report which strategy is
+    active — a read-only diagnostic, not an action. Takes no
+    parameters beyond authentication (token/client_id); there is
+    nothing else to configure on this call.
+
+    Run this once before your first rca_pyrca_epsilon_diagnosis,
+    rca_pyrca_ht_diagnosis, or rca_pyrca_random_walk call if you're
+    unsure which strategy is active, or if a PyRCA call errors
+    unexpectedly — the response's "recommendations" field will say
+    what to fix.
 
     Checks:
       - Strategy B (pure Python): always available, no extra setup
@@ -1160,11 +1282,23 @@ async def rca_dtree_answer(params: DTreeAnswerInput) -> str:
 )
 async def rca_dtree_list_sessions(params: DTreeListInput) -> str:
     """
-    🌟 Starter+ — List all diagnostic sessions with optional equipment_id /
-    resolved_only filters.
+    🌟 Starter+ — List your equipment diagnostic sessions (started via
+    rca_dtree_start), each with its status and diagnosis if resolved.
+    Free-plan keys get a plan_required error instead of results.
+
+    Use this to find a session_id for rca_guide_generate_report, check
+    whether a session is already resolved before continuing it with
+    rca_dtree_answer, or review diagnostic history for one piece of
+    equipment.
+
+    Args:
+        params (DTreeListInput): equipment_id (optional filter),
+            resolved_only (default false — includes in-progress
+            sessions too)
 
     Returns:
-        str: JSON with total, sessions (including diagnosis if resolved)
+        str: JSON {total, sessions: [{session_id, equipment_id,
+             status, diagnosis, ...}, ...]}
     """
     return await _client.call("dtree/list_sessions", params.model_dump())
 
@@ -1176,15 +1310,23 @@ async def rca_dtree_list_sessions(params: DTreeListInput) -> str:
 async def rca_guide_generate_report(params: GuideReportInput) -> str:
     """
     🌟 Starter+ (markdown) / 💎 Pro+ (PDF/HTML) — Generate a maintenance/
-    troubleshooting report from a completed diagnostic session.
+    troubleshooting report from a completed diagnostic session. The
+    session must already be resolved (finished via rca_dtree_answer)
+    — an in-progress session returns an error telling you to keep
+    answering questions first.
 
     Report includes equipment/symptom summary, full diagnostic path,
     root cause with confidence score, recommended actions and parts list,
     measurements recorded, guide section references, and escalation flag.
 
     Args:
-        params (GuideReportInput): session_id, format (pdf|html|markdown),
-            include_guide_refs, custom_title
+        params (GuideReportInput):
+            - session_id: must be a session already marked "resolved"
+              (check via rca_dtree_list_sessions)
+            - format: "markdown" (default, Starter+), "pdf" or "html"
+              (Pro+ only — Starter requesting these gets plan_required,
+              not a silent downgrade)
+            - include_guide_refs, custom_title
     """
     return await _client.call("guide/generate_report", params.model_dump())
 

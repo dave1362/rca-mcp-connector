@@ -67,7 +67,7 @@ class HealthInput(BaseModel):
 class AuditInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
     hour_key: Optional[str] = Field(
         default=None,
         description="Hour bucket YYYYMMDD_HH (default: current hour)",
@@ -89,7 +89,7 @@ class GraphCreateInput(BaseModel):
     token: str = Field(..., description="API key")
     client_id: str = Field(default="default")
     name: str = Field(..., min_length=1, max_length=128, description="Graph name")
-    description: str = Field(default="", max_length=512)
+    description: str = Field(default="", max_length=512, description="Optional free-text notes on this graph's purpose")
 
 
 class GraphGetInput(BaseModel):
@@ -119,7 +119,10 @@ class GraphDiscoverInput(BaseModel):
     data: Dict[str, List[float]] = Field(
         ..., description="Dict of {variable_name: [values]}. Min 30 samples, max 50 variables."
     )
-    significance: float = Field(default=0.05, ge=0.001, le=0.5)
+    significance: float = Field(
+        default=0.05, ge=0.001, le=0.5,
+        description="P-value threshold for the discovery algorithm's independence tests, 0.001-0.5 (default 0.05, standard); lower = stricter, fewer edges found",
+    )
 
 
 class GraphDeleteInput(BaseModel):
@@ -163,50 +166,60 @@ class NodeOpInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
-    name: str = Field(..., min_length=1, max_length=128)
+    graph_id: str = Field(..., description="Graph to add the node to")
+    name: str = Field(..., min_length=1, max_length=128, description="Unique node name within the graph")
     node_type: str = Field(
         default="metric",
         pattern="^(metric|incident|symptom|root_cause|intermediate)$",
+        description="One of: metric | incident | symptom | root_cause | intermediate — used to color/classify nodes in reports and graph views",
     )
-    description: str = Field(default="", max_length=256)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    description: str = Field(default="", max_length=256, description="Optional free-text notes on what this node represents")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Optional arbitrary key-value metadata attached to the node")
 
 
 class RemoveNodeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
-    name: str = Field(..., min_length=1, max_length=128)
+    graph_id: str = Field(..., description="Graph to modify")
+    name: str = Field(
+        ..., min_length=1, max_length=128,
+        description="Exact node name as it appears in the graph (case-sensitive)",
+    )
 
 
 class EdgeOpInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
-    source: str = Field(..., min_length=1, max_length=128)
-    target: str = Field(..., min_length=1, max_length=128)
-    weight: float = Field(default=1.0, ge=0.0, le=1.0)
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
-    method: str = Field(default="manual", max_length=64)
+    graph_id: str = Field(..., description="Graph to add the edge to")
+    source: str = Field(..., min_length=1, max_length=128, description="Cause node name (must already exist in the graph)")
+    target: str = Field(..., min_length=1, max_length=128, description="Effect node name (must already exist in the graph)")
+    weight: float = Field(default=1.0, ge=0.0, le=1.0, description="Causal strength, 0.0-1.0 (default 1.0 = full strength)")
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="How confident you are in this edge, 0.0-1.0 (default 1.0)")
+    method: str = Field(default="manual", max_length=64, description="How this edge was determined, e.g. 'manual', 'granger_causality', 'domain_expert' — free text, used for provenance display only")
 
 
 class RemoveEdgeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
-    source: str = Field(..., min_length=1, max_length=128)
-    target: str = Field(..., min_length=1, max_length=128)
+    graph_id: str = Field(..., description="Graph to modify")
+    source: str = Field(
+        ..., min_length=1, max_length=128,
+        description="Exact source node name (case-sensitive); the edge source→target must currently exist",
+    )
+    target: str = Field(
+        ..., min_length=1, max_length=128,
+        description="Exact target node name (case-sensitive)",
+    )
 
 
 class PathScoreInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
+    graph_id: str = Field(..., description="Graph to search")
     target_node: str = Field(..., description="Incident or effect node to trace causes for")
     top_k: int = Field(default=10, ge=1, le=50, description="Number of top paths to return")
 
@@ -215,7 +228,7 @@ class MarkovBlanketInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    graph_id: str
+    graph_id: str = Field(..., description="Graph containing the node")
     node: str = Field(..., description="Node to compute Markov blanket for")
 
 
@@ -223,22 +236,22 @@ class ModelCreateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    name: str = Field(..., min_length=1, max_length=128)
+    name: str = Field(..., min_length=1, max_length=128, description="Model name (for your own reference — doesn't affect behavior)")
     family: str = Field(..., pattern=r"^(bayesian_network|dowhy_causal_inference|granger_causality|fault_tree_analysis|fishbone_ishikawa|fmea|bayesian_structural_time_series|change_point_detection|random_forest_importance|counterfactual_analysis)$", description="RCA model family (see rca_admin_health for list)")
-    description: str = Field(default="", max_length=512)
+    description: str = Field(default="", max_length=512, description="Optional free-text notes on what this model is for")
     config: Dict[str, Any] = Field(
         default_factory=dict, description="Family-specific configuration parameters"
     )
-    tags: List[str] = Field(default_factory=list, max_length=10)
-    version: str = Field(default="1.0.0", max_length=32)
+    tags: List[str] = Field(default_factory=list, max_length=10, description="Up to 10 free-text labels for filtering with rca_model_list")
+    version: str = Field(default="1.0.0", max_length=32, description="Your own version label for this model (not validated or auto-incremented)")
 
 
 class ModelListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    family_filter: Optional[str] = Field(default=None, pattern=r"^(bayesian_network|dowhy_causal_inference|granger_causality|fault_tree_analysis|fishbone_ishikawa|fmea|bayesian_structural_time_series|change_point_detection|random_forest_importance|counterfactual_analysis)$")
-    status_filter: Optional[str] = Field(default=None, pattern=r"^(draft|trained|validated|deployed|deprecated|failed)$")
+    family_filter: Optional[str] = Field(default=None, pattern=r"^(bayesian_network|dowhy_causal_inference|granger_causality|fault_tree_analysis|fishbone_ishikawa|fmea|bayesian_structural_time_series|change_point_detection|random_forest_importance|counterfactual_analysis)$", description="Only return models of this family (omit for all families)")
+    status_filter: Optional[str] = Field(default=None, pattern=r"^(draft|trained|validated|deployed|deprecated|failed)$", description="Only return models with this status: draft | trained | validated | deployed | deprecated | failed (omit for all statuses)")
 
 
 class ModelStatusInput(BaseModel):
@@ -253,7 +266,7 @@ class ModelValidateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    model_id: str
+    model_id: str = Field(..., description="Model to validate (from rca_model_create)")
     validation_data: Dict[str, List[Any]] = Field(
         ..., description="Hold-out dataset for validation: {variable: [values]}"
     )
@@ -264,8 +277,8 @@ class ModelDeleteInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    model_id: str
-    confirm: bool = Field(..., description="Must be true")
+    model_id: str = Field(..., description="Model to permanently delete")
+    confirm: bool = Field(..., description="Must be true to proceed with the deletion")
 
 
 class RunAnalysisInput(BaseModel):
@@ -296,15 +309,19 @@ class GetResultInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    result_id: str
+    result_id: str = Field(
+        ..., description="A result_id returned by a prior analysis call (not a model_id or graph_id)"
+    )
 
 
 class ListResultsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    limit: int = Field(default=20, ge=1, le=100)
-    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100, description="Page size, 1-100")
+    offset: int = Field(
+        default=0, ge=0, description="Number of results to skip from the newest, for paging"
+    )
 
 
 class QueryResultsInput(BaseModel):
@@ -312,20 +329,20 @@ class QueryResultsInput(BaseModel):
     token: str
     client_id: str = Field(default="default")
     model_family: Optional[str] = Field(default=None, description="Filter by model family")
-    min_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    min_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Only return results with confidence_overall at or above this, 0.0-1.0 (default 0.0 = no filter)")
     after_ts: Optional[str] = Field(
         default=None, description="ISO timestamp — only results executed at or after this"
     )
     tags: Optional[List[str]] = Field(default=None, description="Match results with any of these tags")
-    limit: int = Field(default=20, ge=1, le=100)
-    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100, description="Page size, 1-100")
+    offset: int = Field(default=0, ge=0, description="Number of matching results to skip, for paging")
 
 
 class CompareResultsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    result_ids: List[str] = Field(..., min_length=2, max_length=10)
+    result_ids: List[str] = Field(..., min_length=2, max_length=10, description="2-10 result_ids to compare side by side (from rca_analysis_run or rca_analysis_list_results)")
 
 
 class ExplainInput(BaseModel):
@@ -349,7 +366,12 @@ class BatchAnalysisInput(BaseModel):
         ...,
         min_length=1,
         max_length=20,
-        description="List of payload dicts (one per incident), max 20",
+        description=(
+            "1-20 payload dicts (capped by your plan's max_batch_size), "
+            "one per incident. Each must match the shape rca_analysis_run "
+            "expects for this model family, e.g. for time-series families: "
+            '{"data": {var: [values, ...], ...}, "target": "var_name"}'
+        ),
     )
 
 
@@ -364,7 +386,7 @@ class EnsembleInput(BaseModel):
     weights: Optional[List[float]] = Field(
         default=None, description="Per-model weights (default: equal weighting)"
     )
-    save: bool = Field(default=True)
+    save: bool = Field(default=True, description="Persist the ensembled result server-side for later retrieval (default true)")
 
 
 class EpsilonDiagnosisInput(BaseModel):
@@ -407,7 +429,10 @@ class HTDiagnosisInput(BaseModel):
     sli_metric: str = Field(..., description="SLI metric where anomaly was observed")
     anomaly_start_idx: int = Field(
         ..., ge=5, description="Index where anomaly begins (min 5 pre-period points)")
-    significance: float = Field(default=0.05, ge=0.001, le=0.2)
+    significance: float = Field(
+        default=0.05, ge=0.001, le=0.2,
+        description="P-value threshold for the hypothesis test, 0.001-0.2 (default 0.05); lower = stricter, fewer nodes flagged as anomalous",
+    )
     use_descendant_adjustment: bool = Field(
         default=True, description="Apply HT-ADJ descendant adjustment (recommended)")
 
@@ -440,10 +465,10 @@ class ReportCompareInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    result_ids: List[str] = Field(..., min_length=2, max_length=10)
-    format: str = Field(default="markdown", pattern="^(markdown|html)$")
-    title: str = Field(default="RCA Comparative Analysis Report", max_length=200)
-    save: bool = Field(default=True)
+    result_ids: List[str] = Field(..., min_length=2, max_length=10, description="2-10 result_ids to compare in one report")
+    format: str = Field(default="markdown", pattern="^(markdown|html)$", description="Output format: markdown (default) or html")
+    title: str = Field(default="RCA Comparative Analysis Report", max_length=200, description="Report title, up to 200 chars")
+    save: bool = Field(default=True, description="Persist the report server-side for later retrieval (default true)")
 
 
 class ProviderConfigInput(BaseModel):
@@ -473,8 +498,8 @@ class RunAnalysisAsyncInput(BaseModel):
     client_id: str = Field(default="default")
     model_id: str = Field(..., description="Model to run (must exist in registry)")
     payload: Dict[str, Any] = Field(..., description="Analysis payload — same shape as rca_analysis_run")
-    save: bool = Field(default=True)
-    tags: List[str] = Field(default_factory=list, max_length=10)
+    save: bool = Field(default=True, description="Persist the result server-side once the task completes (default true)")
+    tags: List[str] = Field(default_factory=list, max_length=10, description="Up to 10 free-text labels attached to the saved result, for filtering with rca_analysis_query_results")
 
 
 class PollTaskInput(BaseModel):
@@ -514,7 +539,7 @@ class GuideIngestInput(BaseModel):
     tags: List[str] = Field(default_factory=list,
         description="Domain tags e.g. ['pump', 'hydraulic', 'water-treatment']",
         max_length=20)
-    version: str = Field(default="1.0", max_length=20)
+    version: str = Field(default="1.0", max_length=20, description="Your own version label for this guide (not validated or auto-incremented)")
 
 
 class GuideSearchInput(BaseModel):
@@ -544,8 +569,8 @@ class GuideListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    equipment_type: Optional[str] = Field(default=None)
-    tags: Optional[List[str]] = Field(default=None)
+    equipment_type: Optional[str] = Field(default=None, description="Only return guides for this equipment type (omit for all types)")
+    tags: Optional[List[str]] = Field(default=None, description="Only return guides matching any of these tags (omit for all guides)")
 
 
 class GuideDeleteInput(BaseModel):
@@ -562,7 +587,7 @@ class DTreeStartInput(BaseModel):
     client_id: str = Field(default="default")
     guide_id: str = Field(...,
         description="Guide ID of a json_dtree guide, OR 'auto' to generate from FMEA")
-    equipment_id: str = Field(..., min_length=1, max_length=128)
+    equipment_id: str = Field(..., min_length=1, max_length=128, description="Equipment this diagnostic session is for, e.g. 'pump_XR200_unit3'")
     symptom: str = Field(..., min_length=3, max_length=512,
         description="Initial observed symptom or fault description")
     session_id: Optional[str] = Field(default=None,
@@ -586,19 +611,33 @@ class DTreeListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    equipment_id: Optional[str] = Field(default=None)
-    resolved_only: bool = Field(default=False)
+    equipment_id: Optional[str] = Field(
+        default=None, description="Filter to only this equipment's sessions (omit for all equipment)"
+    )
+    resolved_only: bool = Field(
+        default=False,
+        description="If true, only return sessions that reached a final diagnosis (default: include in-progress too)",
+    )
 
 
 class GuideReportInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str
     client_id: str = Field(default="default")
-    session_id: str = Field(..., description="Completed diagnostic session ID")
-    format: str = Field(default="markdown", pattern="^(pdf|html|markdown)$")
+    session_id: str = Field(
+        ..., description="A session_id already marked 'resolved' (check via rca_dtree_list_sessions)"
+    )
+    format: str = Field(
+        default="markdown",
+        pattern="^(pdf|html|markdown)$",
+        description="'markdown' (default, Starter+) or 'pdf'/'html' (Pro+ only — Starter requesting these gets plan_required, not a silent downgrade)",
+    )
     include_guide_refs: bool = Field(default=True,
         description="Include relevant guide section references")
-    custom_title: Optional[str] = Field(default=None, max_length=200)
+    custom_title: Optional[str] = Field(
+        default=None, max_length=200,
+        description="Custom report title, up to 200 chars (default: auto-generated from equipment/symptom)",
+    )
 
 
 class DTreeGenerateFromFmeaInput(BaseModel):
@@ -606,8 +645,8 @@ class DTreeGenerateFromFmeaInput(BaseModel):
     token: str
     client_id: str = Field(default="default")
     fmea_result_id: str = Field(..., description="result_id of a completed FMEA analysis")
-    equipment_id: str = Field(..., min_length=1, max_length=128)
-    equipment_type: str = Field(default="custom")
+    equipment_id: str = Field(..., min_length=1, max_length=128, description="Equipment this decision tree is generated for, e.g. 'pump_XR200_unit3'")
+    equipment_type: str = Field(default="custom", description="Equipment type; see rca_guide_ingest's schema for supported values (default 'custom' for anything not on that list)")
     save_as_guide: bool = Field(default=True,
         description="If true, ingest the generated tree as a json_dtree guide")
 
@@ -644,7 +683,7 @@ class GuidePDFIngestInput(BaseModel):
     tags: List[str] = Field(default_factory=list,
         description="Domain tags e.g. ['pump', 'hydraulic', 'aquatreat', 'preventive']",
         max_length=20)
-    version: str = Field(default="1.0", max_length=20)
+    version: str = Field(default="1.0", max_length=20, description="Your own version label for this guide (not validated or auto-incremented)")
     strategy: str = Field(default="auto",
         pattern="^(auto|text_native|ocr|table|mixed)$",
         description="Parsing strategy (default: auto — recommended)")
