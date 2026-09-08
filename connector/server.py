@@ -175,7 +175,13 @@ async def rca_auth_generate_token(params: AuthSetupInput) -> str:
 async def rca_auth_list_keys(params: ListKeysInput) -> str:
     """
     List your own API keys and their metadata. Never returns raw or
-    hashed key material. Admin role required (Enterprise plan).
+    hashed key material. Requires the multi-key feature (Pro plan or
+    above -- up to 5 keys on Pro, unlimited on Enterprise); Free/Starter
+    keys get a security_violation error, since those plans only ever
+    have the one key they authenticated with.
+
+    Use the returned key_id values with rca_auth_rotate_key or
+    rca_auth_revoke_token to act on a specific key.
 
     Returns:
         str: JSON with total and a list of {key_id, label, plan_at_issue,
@@ -191,13 +197,22 @@ async def rca_auth_list_keys(params: ListKeysInput) -> str:
 async def rca_auth_rotate_key(params: RotateKeyInput) -> str:
     """
     Deactivate one of your existing API keys and generate a replacement
-    for the same account. Admin role required (Enterprise plan).
+    for the same account in one call. Requires the multi-key feature
+    (Pro plan or above -- up to 5 keys on Pro, unlimited on Enterprise).
+
+    Use rca_auth_list_keys first to find key_id if you don't already
+    have it. Prefer this over rca_auth_revoke_token when you want a
+    like-for-like replacement key in one step rather than just shutting
+    the old one off.
 
     Args:
-        params (RotateKeyInput): key_id of your existing key to rotate
+        params (RotateKeyInput):
+            - key_id: UUID of the existing key to deactivate (from
+              rca_auth_list_keys), not the raw key string itself
 
     Returns:
-        str: JSON with old_key_id, new_key_id, api_key (new raw key)
+        str: JSON with old_key_id, new_key_id, api_key (new raw key --
+             store it now, it cannot be recovered later)
     """
     return await _client.call("auth/rotate_key", params.model_dump())
 
@@ -209,7 +224,15 @@ async def rca_auth_rotate_key(params: RotateKeyInput) -> str:
 async def rca_auth_revoke_token(params: RevokeTokenInput) -> str:
     """
     Deactivate one of your own API keys immediately — useful when a key
-    is compromised or an integration is being retired.
+    is compromised or an integration is being retired. Unlike
+    rca_auth_list_keys/rca_auth_rotate_key, this has no plan gate at
+    all — every plan can revoke, including Free/Starter with only one
+    key (revoking your only key means you'll need rca_auth_generate_token
+    again, or your dashboard, to get back in).
+
+    If you don't already know key_id_to_revoke and you're Free/Starter
+    (so rca_auth_list_keys is unavailable to you), check your account
+    dashboard for the key's ID instead.
 
     Args:
         params (RevokeTokenInput):
@@ -229,13 +252,22 @@ async def rca_auth_revoke_token(params: RevokeTokenInput) -> str:
 )
 async def rca_admin_health(params: HealthInput) -> str:
     """
-    Return server health status: uptime, loaded models/graphs, storage stats.
+    Return server health status and instance-wide aggregate counts. Any
+    authenticated key can call this (minimum viewer role) -- use this
+    to confirm the server is reachable and to see which model families
+    are supported, not to check your own account's usage.
+
+    Note: models_in_registry/graphs_on_disk/results_on_disk are counts
+    across ALL users on this server instance, not just yours -- for
+    your own data, use rca_model_list, rca_graph_list_versions, or
+    rca_analysis_list_results instead.
 
     Args:
         params (HealthInput): token, client_id
 
     Returns:
-        str: JSON health snapshot
+        str: JSON health snapshot (status, timestamp, instance-wide
+             counts, supported model_families_supported list)
     """
     return await _client.call("admin/health", params.model_dump())
 
@@ -250,9 +282,9 @@ async def rca_admin_read_audit_log(params: AuditInput) -> str:
     one entry per tool call you made, showing which tool ran, when, and
     whether it succeeded or was denied.
 
-    Requires the admin role on your API key; self-service Free/Starter/
-    Pro keys default to lower roles and will be denied — use
-    rca_admin_show_plan_info to check your own plan/role first. Never
+    Requires the audit_log_export feature (Pro plan or above --
+    Free/Starter get a plan_required-style security_violation error;
+    use rca_admin_show_plan_info to check your own plan first). Never
     returns another user's activity, regardless of plan.
 
     Use this to investigate why a call was denied or confirm a
@@ -278,14 +310,26 @@ async def rca_admin_read_audit_log(params: AuditInput) -> str:
 )
 async def rca_admin_purge_namespace(params: PurgeInput) -> str:
     """
-    Permanently delete ALL records in a storage namespace (graphs/models/results).
-    Requires confirm=true.  This action is IRREVERSIBLE.
+    Permanently delete ALL of YOUR OWN records in a storage namespace
+    (graphs/models/results) in one call. Requires confirm=true. This
+    action is IRREVERSIBLE. Only affects data you own -- there is no
+    cross-account purge capability exposed via this or any other tool.
+
+    Enterprise plan only (a deliberate tier feature, not a bug --
+    Free/Starter/Pro get a security_violation error). On those plans,
+    delete records one at a time instead: rca_graph_delete for graphs,
+    rca_model_delete for models. There's currently no per-item delete
+    tool for results.
 
     Args:
-        params (PurgeInput): token, namespace, confirm
+        params (PurgeInput):
+            - namespace: one of "graphs", "models", "results" -- purges
+              only that one namespace, not all three at once
+            - confirm: must be true, or this returns an "aborted" error
+              without deleting anything
 
     Returns:
-        str: JSON with deleted_count
+        str: JSON {namespace, deleted_count}
     """
     return await _client.call("admin/purge_namespace", params.model_dump())
 
@@ -296,15 +340,18 @@ async def rca_admin_purge_namespace(params: PurgeInput) -> str:
 )
 async def rca_graph_create(params: GraphCreateInput) -> str:
     """
-    Create a new empty causal DAG for RCA.
+    Create a new, empty causal DAG. Populate it with rca_graph_add_node
+    and rca_graph_add_edge afterward, or use rca_graph_discover instead
+    if you have observational data and want the graph inferred rather
+    than hand-built.
 
     Args:
         params (GraphCreateInput):
-            - name: graph display name
-            - description: optional description
+            - name: graph display name (for your own reference)
+            - description: optional free-text notes on this graph's purpose
 
     Returns:
-        str: JSON with graph_id
+        str: JSON {graph_id, name, message}
     """
     return await _client.call("graph/create", params.model_dump())
 
@@ -315,15 +362,19 @@ async def rca_graph_create(params: GraphCreateInput) -> str:
 )
 async def rca_graph_get(params: GraphGetInput) -> str:
     """
-    Retrieve a causal graph in JSON, Graphviz DOT, or adjacency-list format.
+    Retrieve a causal graph's current state. Use "json" (default) to
+    inspect it programmatically, "dot" to render it visually with
+    Graphviz, or "adjacency" for a plain source->targets mapping.
 
     Args:
         params (GraphGetInput):
-            - graph_id: ID of the graph
-            - format: 'json' | 'dot' | 'adjacency'
+            - graph_id: the graph to retrieve
+            - format: "json" (full node/edge detail, default), "dot"
+              (Graphviz source), or "adjacency" (simple mapping)
 
     Returns:
-        str: Graph data in requested format
+        str: Graph data in the requested format, or a not_found error
+             if the graph doesn't exist or belongs to another user
     """
     return await _client.call("graph/get", params.model_dump())
 
@@ -334,14 +385,21 @@ async def rca_graph_get(params: GraphGetInput) -> str:
 )
 async def rca_graph_score(params: GraphScoreInput) -> str:
     """
-    Compute structural quality scores for a causal graph:
-    density, DAG validity, coverage, root/leaf nodes, connected components.
+    Compute structural quality scores for a causal graph -- a sanity
+    check on the graph's shape itself (is it a valid DAG, how
+    connected is it), not a root-cause analysis. Use this after
+    building or editing a graph by hand, or after rca_graph_discover,
+    to catch structural issues (e.g. disconnected components, a graph
+    that isn't actually a DAG) before running rca_analysis_run on it.
 
     Args:
-        params (GraphScoreInput): graph_id
+        params (GraphScoreInput): graph_id -- the graph to score
 
     Returns:
-        str: JSON GraphScore with structural_score and coverage_score in [0,1]
+        str: JSON GraphScore {node_count, edge_count, dag_valid,
+             density, avg_in_degree, avg_out_degree, max_path_length,
+             connected_components, root_nodes, leaf_nodes,
+             structural_score, coverage_score} -- both scores in [0,1]
     """
     return await _client.call("graph/score", params.model_dump())
 
@@ -352,8 +410,18 @@ async def rca_graph_score(params: GraphScoreInput) -> str:
 )
 async def rca_graph_discover(params: GraphDiscoverInput) -> str:
     """
-    Automatically discover a causal skeleton from observational metric data
-    using partial-correlation + Fisher-Z conditional independence tests (PC-algorithm).
+    Automatically discover a causal skeleton from observational metric
+    data using partial-correlation + Fisher-Z conditional independence
+    tests (PC-algorithm). Requires the causal_discovery feature (Pro+).
+
+    Creates and saves a new graph, same as rca_graph_create, but with
+    edges inferred from data instead of asserted by hand -- use
+    rca_graph_create + rca_graph_add_edge instead if you already know
+    the causal structure and just want to encode it directly. Always
+    review the discovered edges (rca_graph_get or rca_graph_score)
+    before trusting them for RCA -- statistical discovery finds
+    correlational structure consistent with the data, not guaranteed
+    ground truth.
 
     Args:
         params (GraphDiscoverInput):
@@ -373,7 +441,24 @@ async def rca_graph_discover(params: GraphDiscoverInput) -> str:
 )
 async def rca_graph_delete(params: GraphDeleteInput) -> str:
     """
-    Delete a causal graph permanently. Requires confirm=true.
+    Delete a causal graph permanently. Requires confirm=true. This
+    action is IRREVERSIBLE via this tool -- if graph versioning is
+    available on your plan, restoring an old version first won't help
+    since the whole graph record is gone, not just its edges.
+
+    You only need this to remove a graph entirely; to fix a graph
+    you're still using, edit its nodes/edges instead
+    (rca_graph_add_node/remove_node/add_edge/remove_edge).
+
+    Args:
+        params (GraphDeleteInput):
+            - graph_id: the graph to delete
+            - confirm: must be true, or this returns an "aborted" error
+              without deleting anything
+
+    Returns:
+        str: JSON {deleted: graph_id}, or a not_found error if the
+             graph doesn't exist or belongs to another user
     """
     return await _client.call("graph/delete", params.model_dump())
 
@@ -386,10 +471,19 @@ async def rca_graph_list_versions(params: GraphListVersionsInput) -> str:
     """
     List all historical versions of a causal graph. A new version is
     snapshotted automatically every time the graph is saved (node/edge
-    additions, removals, etc).
+    additions, removals, etc) -- there's no separate "save version"
+    step. Requires the graph_versioning feature (Starter+).
+
+    Use the returned version_id values with rca_graph_restore_version
+    to roll back to an earlier state.
+
+    Args:
+        params (GraphListVersionsInput): graph_id -- the graph to list
+            versions for
 
     Returns:
-        str: JSON list of {version_id, created_at, node_count, edge_count}
+        str: JSON {graph_id, total, versions: [{version_id, created_at,
+             node_count, edge_count}, ...]}, newest first
     """
     return await _client.call("graph/list_versions", params.model_dump())
 
@@ -402,8 +496,17 @@ async def rca_graph_restore_version(params: GraphRestoreVersionInput) -> str:
     """
     Restore a causal graph to a specific historical version. This creates
     a new current state from the version snapshot — the version history
-    itself is preserved (the restore operation is snapshotted too).
-    Requires confirm=true.
+    itself is preserved (the restore operation is snapshotted too, so
+    restoring is itself undoable by restoring forward again). Requires
+    confirm=true and the graph_versioning feature (Starter+).
+
+    Use rca_graph_list_versions first to find a version_id.
+
+    Args:
+        params (GraphRestoreVersionInput):
+            - graph_id: the graph to restore
+            - version_id: from rca_graph_list_versions
+            - confirm: must be true, or this returns an "aborted" error
 
     Returns:
         str: JSON with graph_id, restored_from version_id, node/edge counts
@@ -420,14 +523,24 @@ async def rca_graph_merge(params: GraphMergeInput) -> str:
     Merge two causal graphs into a unified graph for cross-system RCA
     (e.g. combining a network-layer graph with an application-layer graph).
     Duplicate edges keep the higher-weight version; edges that would
-    introduce a cycle are dropped and counted.
+    introduce a cycle are dropped and counted, not silently ignored.
+    Requires the causal_discovery feature (Pro+); both source graphs
+    must belong to you.
 
     Args:
-        params (GraphMergeInput): graph_id_a, graph_id_b, merged_name,
-            conflict_resolution ('union' | 'intersection')
+        params (GraphMergeInput):
+            - graph_id_a, graph_id_b: the two graphs to merge (both
+              must be yours)
+            - merged_name: name for the new, third graph created by
+              this call (graph_id_a/b are left untouched)
+            - conflict_resolution: "union" (default -- keep all nodes
+              from both graphs) or "intersection" (only nodes present
+              in both)
 
     Returns:
-        str: JSON with merged_graph_id, node_count, edge_count, cycles_removed
+        str: JSON {merged_graph_id, node_count, edge_count,
+             cycles_removed}, or a not_found error if either graph
+             doesn't exist or belongs to another user
     """
     return await _client.call("graph/merge", params.model_dump())
 
@@ -438,13 +551,23 @@ async def rca_graph_merge(params: GraphMergeInput) -> str:
 )
 async def rca_graph_add_node(params: NodeOpInput) -> str:
     """
-    Add a typed node (metric / incident / symptom / root_cause / intermediate) to a graph.
+    Add a typed node to a causal graph. Node names must be unique
+    within the graph -- adding a node with a name that already exists
+    raises an error rather than overwriting it; remove the existing
+    one first with rca_graph_remove_node if you want to replace it.
 
     Args:
-        params (NodeOpInput): graph_id, name, node_type, description, metadata
+        params (NodeOpInput):
+            - graph_id: the graph to add to
+            - name: unique node name within this graph
+            - node_type: metric | incident | symptom | root_cause |
+              intermediate (default "metric") -- classifies the node
+              for reports and graph views, doesn't affect analysis
+            - description, metadata: optional, for your own reference
 
     Returns:
-        str: JSON confirmation with updated node count
+        str: JSON {added_node, node_type, total_nodes}, or a value
+             error if the name already exists in this graph
     """
     return await _client.call("graph/add_node", params.model_dump())
 
@@ -485,14 +608,26 @@ async def rca_graph_remove_node(params: RemoveNodeInput) -> str:
 )
 async def rca_graph_add_edge(params: EdgeOpInput) -> str:
     """
-    Add a directed causal edge (source → target) to a graph.
-    Automatically rejects edges that would create a cycle (DAG enforcement).
+    Add a directed causal edge (source → target) to a graph. Both
+    nodes must already exist -- add them first with rca_graph_add_node.
+    Automatically rejects edges that would create a cycle (DAG
+    enforcement) rather than silently allowing an invalid graph.
 
     Args:
-        params (EdgeOpInput): graph_id, source, target, weight [0,1], confidence [0,1], method
+        params (EdgeOpInput):
+            - graph_id: the graph to add to
+            - source, target: existing node names (cause -> effect)
+            - weight: causal strength, 0.0-1.0 (default 1.0)
+            - confidence: how sure you are of this edge, 0.0-1.0
+              (default 1.0) -- distinct from weight; a weak-but-certain
+              edge and a strong-but-uncertain one score differently
+            - method: free-text provenance label, e.g. "manual",
+              "granger_causality", "domain_expert" -- display only
 
     Returns:
-        str: JSON confirmation or cycle-detection error
+        str: JSON {added_edge, weight, confidence, total_edges}, or a
+             value/not_found error if either node doesn't exist or the
+             edge would create a cycle
     """
     return await _client.call("graph/add_edge", params.model_dump())
 
@@ -567,15 +702,24 @@ async def rca_graph_score_paths(params: PathScoreInput) -> str:
 )
 async def rca_graph_markov_blanket(params: MarkovBlanketInput) -> str:
     """
-    Return the Markov blanket of a node: parents ∪ children ∪ co-parents.
-    The Markov blanket is the minimal conditioning set that d-separates the node
-    from the rest of the graph — essential for targeted RCA investigation.
+    Return the Markov blanket of a node: parents ∪ children ∪
+    co-parents -- the minimal set of other nodes needed to fully
+    explain this node's behavior, ignoring the rest of the graph.
+
+    Use this to scope an investigation to just the metrics that
+    actually matter for one incident node, instead of reasoning about
+    the whole graph -- e.g. before running a targeted analysis, or to
+    decide which upstream metrics are even worth pulling data for.
 
     Args:
-        params (MarkovBlanketInput): graph_id, node
+        params (MarkovBlanketInput):
+            - graph_id: the graph to search
+            - node: the node to compute the blanket for (must exist in
+              the graph; check with rca_graph_get)
 
     Returns:
-        str: JSON with parents, children, co_parents, full_blanket
+        str: JSON {parents, children, co_parents, full_blanket}, or a
+             not_found error if the node or graph doesn't exist
     """
     return await _client.call("graph/markov_blanket", params.model_dump())
 
@@ -624,13 +768,19 @@ async def rca_model_create(params: ModelCreateInput) -> str:
 )
 async def rca_model_list(params: ModelListInput) -> str:
     """
-    List all registered RCA models with optional family/status filters.
+    List all of YOUR registered RCA models, with optional family/status
+    filters. Use this to find a model_id for rca_analysis_run, or to
+    check your usage against your plan's model-count limit (see
+    rca_admin_show_plan_info for the limit itself).
 
     Args:
-        params (ModelListInput): optional family_filter, status_filter
+        params (ModelListInput):
+            - family_filter: only this model family (omit for all)
+            - status_filter: only this status (omit for all)
 
     Returns:
-        str: JSON list of model specs (id, name, family, status, version, tags)
+        str: JSON {total, models: [{model_id, name, family, status,
+             version, tags, created_at}, ...]}
     """
     return await _client.call("model/list", params.model_dump())
 
@@ -672,15 +822,27 @@ async def rca_model_update_status(params: ModelStatusInput) -> str:
 )
 async def rca_model_validate(params: ModelValidateInput) -> str:
     """
-    Run a quick validation of a model on hold-out data.
-    Computes correlation-based coverage and confidence metrics.
-    Sets model status to 'validated' on success.
+    Run a quick correlation-based sanity check of a model against
+    hold-out data you supply (not automatically split from training
+    data -- you provide a separate dataset). This is a lightweight
+    coverage/confidence check, not full cross-validation or backtesting;
+    use it to catch an obviously broken model, not to certify accuracy.
+
+    Sets the model's status to "validated" on success -- you don't
+    need to also call rca_model_update_status afterward, though you
+    can still use that tool later to move it to "deployed",
+    "deprecated", or "failed".
 
     Args:
-        params (ModelValidateInput): model_id, validation_data, target
+        params (ModelValidateInput):
+            - model_id: the model to validate (from rca_model_create)
+            - validation_data: {variable: [values]}, same shape as an
+              rca_analysis_run payload's "data" field
+            - target: which variable in validation_data to validate against
 
     Returns:
-        str: JSON validation metrics (coverage, mean_correlation, confidence)
+        str: JSON validation metrics (coverage, mean_correlation,
+             confidence), or a not_found/bad_input error
     """
     return await _client.call("model/validate", params.model_dump())
 
@@ -691,7 +853,26 @@ async def rca_model_validate(params: ModelValidateInput) -> str:
 )
 async def rca_model_delete(params: ModelDeleteInput) -> str:
     """
-    Permanently delete a model from registry and storage. Requires confirm=true.
+    Permanently delete a model from the registry and storage. Requires
+    confirm=true. This action is IRREVERSIBLE -- any results already
+    produced by this model (via rca_analysis_run etc.) are unaffected
+    and stay retrievable via rca_analysis_get_result, but you can no
+    longer run new analyses with this model_id.
+
+    Use rca_model_update_status to mark a model "deprecated" instead
+    if you just want to stop new usage while keeping it around for
+    reference -- delete is for when you're certain you won't need the
+    spec again.
+
+    Args:
+        params (ModelDeleteInput):
+            - model_id: the model to delete
+            - confirm: must be true, or this returns an "aborted" error
+              without deleting anything
+
+    Returns:
+        str: JSON {deleted_model_id}, or a not_found error if the
+             model doesn't exist or belongs to another user
     """
     return await _client.call("model/delete", params.model_dump())
 
@@ -702,17 +883,29 @@ async def rca_model_delete(params: ModelDeleteInput) -> str:
 )
 async def rca_analysis_run(params: RunAnalysisInput) -> str:
     """
-    Execute an RCA analysis using a registered model and return ranked root causes.
-
-    This is the primary analysis entry point.  Supply the model_id and a
-    family-specific payload dict.  Results include ranked root_causes, confidence,
-    narrative explanation, and raw model output.
+    Execute an RCA analysis using a registered model and return ranked
+    root causes. This is the primary, synchronous analysis entry point
+    -- it blocks until the model finishes. For a model that might take
+    a while, use rca_analysis_run_async + rca_analysis_poll_task instead
+    (Pro+); for multiple incidents through the same model in one call,
+    use rca_analysis_batch instead (Starter+).
 
     Args:
-        params (RunAnalysisInput): model_id, payload, save, tags
+        params (RunAnalysisInput):
+            - model_id: an existing model from rca_model_create
+            - payload: family-specific dict -- shape depends on the
+              model's family (see the payload field's own description
+              for the exact keys each family expects)
+            - save: persist the result for later retrieval via
+              rca_analysis_get_result (default true; set false for a
+              throwaway check you don't want cluttering your result list)
+            - tags: optional labels for filtering later with
+              rca_analysis_query_results
 
     Returns:
-        str: JSON RCAResult with root_causes, confidence_overall, explanation
+        str: JSON RCAResult with root_causes, confidence_overall,
+             explanation, raw model output, and _saved_as (the
+             result_id) if save=true
     """
     return await _client.call("analysis/run", params.model_dump())
 
@@ -769,16 +962,25 @@ async def rca_analysis_list_results(params: ListResultsInput) -> str:
 )
 async def rca_analysis_query_results(params: QueryResultsInput) -> str:
     """
-    Query stored RCA results by model family, confidence threshold, time range,
-    or tags — without loading every full result record. More efficient than
-    rca_analysis_list_results for filtered lookups.
+    Query stored RCA results by model family, confidence threshold, time
+    range, or tags — without loading every full result record. Use this
+    instead of rca_analysis_list_results whenever you need to filter
+    (e.g. "only high-confidence Granger results from this week"); use
+    rca_analysis_list_results for a plain unfiltered listing instead.
+    Returns lightweight index entries, not full result bodies -- follow
+    up with rca_analysis_get_result for the complete content of any one.
 
     Args:
-        params (QueryResultsInput): model_family, min_confidence, after_ts, tags,
-            limit, offset
+        params (QueryResultsInput):
+            - model_family: exact family name, e.g. "granger_causality"
+              (omit for all families)
+            - min_confidence: 0.0-1.0, only results at or above this
+            - after_ts: ISO timestamp, only results executed at or after this
+            - tags: only results matching any of these tags
+            - limit, offset: pagination, 1-100 per page
 
     Returns:
-        str: JSON with total, results (filtered index entries), has_more
+        str: JSON {total, results: [index entries], has_more}
     """
     return await _client.call("analysis/query_results", params.model_dump())
 
@@ -790,13 +992,19 @@ async def rca_analysis_query_results(params: QueryResultsInput) -> str:
 async def rca_analysis_compare(params: CompareResultsInput) -> str:
     """
     Compare multiple RCA results: surface overlapping root causes,
-    confidence agreement, and model disagreements.
+    confidence agreement, and model disagreements. Returns raw
+    comparison JSON for programmatic use -- use rca_report_compare
+    instead if you want the same comparison rendered as a shareable
+    markdown/HTML document.
 
     Args:
-        params (CompareResultsInput): list of 2–10 result_ids
+        params (CompareResultsInput): result_ids -- 2-10 result_ids to
+            compare (from rca_analysis_run or rca_analysis_list_results)
 
     Returns:
-        str: JSON comparison with consensus_causes and model_disagreements
+        str: JSON comparison with consensus_causes and
+             model_disagreements, or a not_found error if any result_id
+             doesn't exist or belongs to another user
     """
     return await _client.call("analysis/compare", params.model_dump())
 
@@ -807,14 +1015,24 @@ async def rca_analysis_compare(params: CompareResultsInput) -> str:
 )
 async def rca_analysis_explain(params: ExplainInput) -> str:
     """
-    Generate a structured, human-readable explanation of an RCA result
-    at brief / standard / verbose levels.
+    Turn a stored RCA result into a human-readable explanation with
+    heuristic recommended actions (IMMEDIATE/MONITOR/TRACK, based on
+    each cause's score) -- useful for a chat response or incident
+    writeup, as opposed to rca_analysis_get_result's raw JSON.
 
     Args:
-        params (ExplainInput): result_id, detail_level
+        params (ExplainInput):
+            - result_id: from a prior analysis call
+            - detail_level: "brief" (summary + top 3 causes +
+              recommended actions), "standard" (default -- adds all
+              root causes, contributing factors, warnings), or
+              "verbose" (adds the raw model output, timestamp, duration)
 
     Returns:
-        str: JSON with narrative explanation, ranked causes, recommended actions
+        str: JSON narrative explanation, ranked causes, recommended
+             actions (shape varies by detail_level -- see above), or a
+             not_found error if result_id doesn't exist or belongs to
+             another user
     """
     return await _client.call("analysis/explain", params.model_dump())
 
@@ -857,9 +1075,12 @@ async def rca_analysis_batch(params: BatchAnalysisInput) -> str:
 )
 async def rca_analysis_ensemble(params: EnsembleInput) -> str:
     """
-    Run multiple RCA models on the same payload and combine root cause
-    scores via weighted voting. Higher-confidence models contribute more
-    to the final ranking.
+    Run 2-5 different RCA models on the SAME payload and combine their
+    root-cause scores via weighted voting. Requires the ensemble
+    feature (Pro+). Use this when you're unsure which single model
+    family fits the data best and want cross-validation across
+    families -- for the SAME model run over multiple different
+    incidents instead, use rca_analysis_batch.
 
     Algorithm:
       1. Run each model_id via dispatch_rca()
@@ -869,11 +1090,17 @@ async def rca_analysis_ensemble(params: EnsembleInput) -> str:
       5. Return ranked ensemble result
 
     Args:
-        params (EnsembleInput): model_ids (2-5), payload, weights, save
+        params (EnsembleInput):
+            - model_ids: 2-5 existing models, all run against the same payload
+            - payload: shared input, shape depends on the models' families
+            - weights: optional per-model weights, same length as
+              model_ids (default: equal weighting)
+            - save: persist the ensembled result (default true)
 
     Returns:
         str: JSON with ensemble_root_causes (ranked), model_contributions,
-             agreement_matrix (which models agree on which root causes)
+             agreement_matrix (which models agree on which root causes),
+             or a bad_input/not_found error
     """
     return await _client.call("analysis/ensemble", params.model_dump())
 
@@ -891,8 +1118,11 @@ async def rca_pyrca_epsilon_diagnosis(params: EpsilonDiagnosisInput) -> str:
     Uses z-score thresholding: metrics with |z| > epsilon in the incident
     window relative to the normal baseline are flagged as root cause candidates.
 
-    Best used as a FIRST STEP in RCA to narrow down candidate metrics before
-    applying more compute-intensive causal methods.
+    Best used as a FIRST STEP in RCA to narrow down candidate metrics
+    before applying more compute-intensive causal methods like
+    rca_pyrca_ht_diagnosis or rca_pyrca_random_walk -- this one needs
+    no causal graph at all, just two data windows. Requires the pyrca
+    feature (Starter+).
 
     Args:
         params (EpsilonDiagnosisInput):
@@ -921,6 +1151,11 @@ async def rca_pyrca_random_walk(params: RandomWalkInput) -> str:
     Graph-based root cause localisation via personalised PageRank random walk.
     Propagates backward through a causal adjacency graph from the SLI node,
     weighting transitions by anomaly scores to compute root cause probabilities.
+    Requires the pyrca feature (Starter+) and, unlike
+    rca_pyrca_epsilon_diagnosis, needs an adjacency graph you already
+    have (from rca_graph_get's "adjacency" format, or hand-built) plus
+    precomputed anomaly scores per metric -- it doesn't compute those
+    scores itself.
 
     Args:
         params (RandomWalkInput):
@@ -949,8 +1184,13 @@ async def rca_pyrca_ht_diagnosis(params: HTDiagnosisInput) -> str:
     propagation from each ancestor node. Applies descendant adjustment to
     reduce indirect cause scores and surface true root causes.
 
-    This is the most statistically rigorous PyRCA algorithm and is recommended
-    when you have a well-validated causal graph and sufficient pre-anomaly data.
+    This is the most statistically rigorous PyRCA algorithm and is
+    recommended when you have a well-validated causal graph and
+    sufficient pre-anomaly data -- reach for
+    rca_pyrca_epsilon_diagnosis instead if you don't have a graph yet,
+    or rca_pyrca_random_walk if you have a graph but not enough
+    pre-anomaly history for a hypothesis test. Requires the pyrca
+    feature (Starter+).
 
     Args:
         params (HTDiagnosisInput):
@@ -976,9 +1216,13 @@ async def rca_pyrca_ht_diagnosis(params: HTDiagnosisInput) -> str:
 )
 async def rca_report_generate(params: ReportGenerateInput) -> str:
     """
-    Generate a styled, professional report from an RCA analysis result.
+    Generate a styled, professional report from a SINGLE RCA analysis
+    result -- use rca_report_compare instead if you want a report
+    covering multiple results together.
 
-    Supported formats:
+    Supported formats (plan-gated -- Free: markdown only, Starter+:
+    adds html/pdf, Pro+: adds excel; requesting an ungated format
+    returns a security_violation error, not a silent downgrade):
       pdf      — Professional PDF with tables, score bars, and styled sections
                  (requires reportlab; falls back to plaintext if not installed)
       html     — Styled HTML with CSS — embeddable in dashboards or emails
@@ -1044,12 +1288,15 @@ async def rca_report_compare(params: ReportCompareInput) -> str:
 )
 async def rca_provider_list_configs(params: ProviderConfigInput) -> str:
     """
-    Get MCP client configuration and setup instructions for a specific provider
-    or list all supported providers.
+    Get MCP client configuration and setup instructions for a specific
+    provider or list all supported providers. Use this when a user
+    asks "how do I connect RCA-MCP to X" -- it's documentation lookup,
+    not something that affects RCA-MCP's own behavior.
 
     Supported providers:
       claude_desktop     — Claude Desktop app (macOS/Windows)
       claude_code        — Claude Code VS Code extension
+      cursor             — Cursor AI code editor
       ollama_mcphost     — Ollama local models via MCPHost bridge
       groq_mcphost       — Groq cloud via MCPHost bridge
       openai_agents      — OpenAI GPT via openai-agents SDK
@@ -1104,16 +1351,26 @@ async def rca_pyrca_validate_setup(params: PyRCASetupInput) -> str:
 )
 async def rca_analysis_run_async(params: RunAnalysisAsyncInput) -> str:
     """
-    Submit a long-running RCA analysis (bayesian_network, dowhy_causal_inference,
-    or any model against a large dataset) as an async background task. Returns
-    a task_id immediately instead of blocking. Use rca_analysis_poll_task to
-    check progress and retrieve the result once it completes.
+    Submit a long-running RCA analysis (bayesian_network,
+    dowhy_causal_inference, or any model against a large dataset) as a
+    background task instead of blocking. Requires the async_tasks
+    feature (Pro+); for most models on typical data sizes, the
+    synchronous rca_analysis_run is simpler and doesn't need this or
+    the plan tier. Returns a task_id immediately -- use
+    rca_analysis_poll_task repeatedly to check progress and retrieve
+    the result once it completes.
 
     Args:
-        params (RunAnalysisAsyncInput): model_id, payload, save, tags
+        params (RunAnalysisAsyncInput):
+            - model_id: an existing model from rca_model_create
+            - payload: same shape as rca_analysis_run expects for that
+              model's family
+            - save: persist the result once the task completes (default true)
+            - tags: optional labels for filtering later with
+              rca_analysis_query_results
 
     Returns:
-        str: JSON with task_id
+        str: JSON {task_id} -- pass this to rca_analysis_poll_task
     """
     return await _client.call("analysis/run_async", params.model_dump())
 
@@ -1124,14 +1381,23 @@ async def rca_analysis_run_async(params: RunAnalysisAsyncInput) -> str:
 )
 async def rca_analysis_poll_task(params: PollTaskInput) -> str:
     """
-    Poll the status of an async RCA task submitted via rca_analysis_run_async.
+    Poll the status of an async RCA task submitted via
+    rca_analysis_run_async. Requires the async_tasks feature (Pro+ --
+    same gate as submitting the task in the first place).
+
+    Call this repeatedly (e.g. every few seconds) until status is
+    "completed" or "failed" -- there's no push notification, only
+    polling. status progresses pending → running → completed/failed;
+    `result` is only populated once completed, `error` only once failed.
 
     Args:
-        params (PollTaskInput): task_id
+        params (PollTaskInput):
+            - task_id: from rca_analysis_run_async's response
 
     Returns:
-        str: JSON with task_id, status, progress, result (if completed),
-             error (if failed)
+        str: JSON {task_id, status, progress, result (if completed),
+             error (if failed)}, or a not_found error if the task_id
+             doesn't exist or belongs to another user
     """
     return await _client.call("analysis/poll_task", params.model_dump())
 
@@ -1142,12 +1408,19 @@ async def rca_analysis_poll_task(params: PollTaskInput) -> str:
 )
 async def rca_admin_show_plan_info(params: PlanInfoInput) -> str:
     """
-    Show the current plan name, all feature limits, and upgrade options.
-    Useful for understanding what features are available on your current plan.
+    Show your current plan, every feature limit, and which locked
+    features an upgrade would unlock. Takes no parameters beyond
+    authentication -- there's nothing else to configure here.
+
+    Call this proactively before something like rca_analysis_batch,
+    rca_model_create, rca_report_compare, rca_guide_generate_report, or
+    rca_dtree_start to check your limits up front, rather than
+    discovering a plan_required error mid-workflow -- several of those
+    tools' docstrings point back to this one for exactly that reason.
 
     Returns:
-        str: JSON with plan details, current limits, available upgrades,
-             and upgrade URL if not on Enterprise.
+        str: JSON {plan, display_name, limits: {...}, features: {...},
+             locked_features: [...], upgrade_url (null on Enterprise)}
     """
     return await _client.call("admin/show_plan_info", params.model_dump())
 
@@ -1159,7 +1432,8 @@ async def rca_admin_show_plan_info(params: PlanInfoInput) -> str:
 async def rca_guide_ingest(params: GuideIngestInput) -> str:
     """
     🌟 Starter+ — Upload and index an equipment troubleshooting guide into the
-    knowledge base.
+    knowledge base, as plain text content. Use rca_guide_ingest_pdf
+    instead if you're starting from an actual PDF file.
 
     Supports three formats:
       markdown   — Structured Markdown with ## headings (recommended);
@@ -1189,6 +1463,8 @@ async def rca_guide_search(params: GuideSearchInput) -> str:
     """
     ✅ All plans — Search the equipment knowledge base by symptom description
     using TF-IDF relevance ranking. Free plan capped at 3 results.
+    Searches both your own ingested guides and the 4 built-in shared
+    sample guides (visible to every account).
 
     Args:
         params (GuideSearchInput): symptom, equipment_type, tags, top_k (1-20)
@@ -1206,13 +1482,25 @@ async def rca_guide_search(params: GuideSearchInput) -> str:
 )
 async def rca_guide_get(params: GuideGetInput) -> str:
     """
-    ✅ All plans — Retrieve a full troubleshooting guide or a specific section.
+    ✅ All plans — Retrieve a full troubleshooting guide, or one specific
+    section by ID. Includes the 4 built-in shared sample guides
+    (visible and readable by every account, though only
+    rca_guide_ingest/rca_guide_ingest_pdf can add your own, and only
+    your own can be deleted via rca_guide_delete).
 
     Args:
-        params (GuideGetInput): guide_id, optional section_id
+        params (GuideGetInput):
+            - guide_id: from rca_guide_ingest, rca_guide_ingest_pdf, or
+              rca_guide_search/rca_guide_list results
+            - section_id: optional, to retrieve one section instead of
+              the whole guide (section IDs come from rca_guide_search
+              results or a prior full rca_guide_get call)
 
     Returns:
-        str: JSON with metadata and sections (or single section)
+        str: JSON {guide_id, metadata, sections} (whole guide) or
+             {guide_id, metadata, section} (single section), or a
+             not_found error if the guide/section doesn't exist or
+             isn't yours
     """
     return await _client.call("guide/get", params.model_dump())
 
@@ -1223,15 +1511,20 @@ async def rca_guide_get(params: GuideGetInput) -> str:
 )
 async def rca_guide_list(params: GuideListInput) -> str:
     """
-    ✅ All plans — List all ingested troubleshooting guides with optional
-    equipment_type/tag filters.
+    ✅ All plans — List your ingested troubleshooting guides (plus the 4
+    built-in shared samples visible to every account), with optional
+    equipment_type/tag filters. Use the returned guide_id with
+    rca_guide_get, rca_guide_delete, or rca_dtree_start.
 
     Args:
-        params (GuideListInput): optional equipment_type, tags filters
+        params (GuideListInput):
+            - equipment_type: only guides for this type (omit for all)
+            - tags: only guides matching any of these tags (omit for all)
 
     Returns:
-        str: JSON list of guide metadata (guide_id, equipment_id, equipment_type,
-             name, version, tags, section_count, created_at)
+        str: JSON {total, guides: [{guide_id, equipment_id,
+             equipment_type, name, version, tags, section_count,
+             created_at}, ...]}
     """
     return await _client.call("guide/list", params.model_dump())
 
@@ -1242,14 +1535,26 @@ async def rca_guide_list(params: GuideListInput) -> str:
 )
 async def rca_guide_delete(params: GuideDeleteInput) -> str:
     """
-    👑 Enterprise (admin role) — Permanently delete one of your own equipment
-    guides. Requires confirm=true.
+    Permanently delete an equipment guide you ingested. Requires
+    confirm=true. This action is IRREVERSIBLE -- re-ingest via
+    rca_guide_ingest or rca_guide_ingest_pdf if you need it back.
+
+    Scoped to your own guides only -- the 4 built-in sample guides
+    (shared, visible to every account) can never be deleted this way,
+    since delete_guide() requires an exact ownership match; deleting a
+    guide already referenced by an active decision-tree session doesn't
+    affect that session's in-progress state.
 
     Args:
-        params (GuideDeleteInput): guide_id, confirm
+        params (GuideDeleteInput):
+            - guide_id: the guide to delete (from rca_guide_list or
+              rca_guide_search)
+            - confirm: must be true, or this returns an "aborted" error
 
     Returns:
-        str: JSON {"deleted": guide_id} on success
+        str: JSON confirmation with the deleted guide_id, or a
+             not_found error if it doesn't exist or belongs to another
+             user (including the 4 shared built-in samples)
     """
     return await _client.call("guide/delete", params.model_dump())
 
@@ -1300,6 +1605,9 @@ async def rca_dtree_answer(params: DTreeAnswerInput) -> str:
     """
     🌟 Starter+ — Answer the current diagnostic question to advance the
     decision tree. Call repeatedly until status == "resolved".
+
+    Once resolved, use rca_guide_generate_report to turn the session
+    into a shareable report.
 
     Args:
         params (DTreeAnswerInput): session_id, answer (yes|no|unknown), measurement
@@ -1376,9 +1684,14 @@ async def rca_dtree_generate_from_fmea(params: DTreeGenerateFromFmeaInput) -> st
     """
     🌟 Starter+ — Auto-generate a diagnostic decision tree from a completed
     FMEA analysis, converting HIGH-priority failure modes into a sequential
-    yes/no diagnostic tree. When save_as_guide=True (default), the tree is
-    ingested as a json_dtree guide and the returned guide_id can be passed
-    to rca_dtree_start.
+    yes/no diagnostic tree. Get fmea_result_id first by running
+    rca_analysis_run against a model created with family="fmea".
+
+    When save_as_guide=True (default), the tree is ingested as a
+    json_dtree guide and the returned guide_id can be passed to
+    rca_dtree_start -- or skip this tool entirely and pass
+    guide_id="auto" directly to rca_dtree_start, which generates the
+    tree on the fly without saving it.
 
     Args:
         params (DTreeGenerateFromFmeaInput): fmea_result_id, equipment_id,
@@ -1421,7 +1734,14 @@ async def rca_guide_pdf_preview(params: GuidePDFPreviewInput) -> str:
 async def rca_guide_ingest_pdf(params: GuidePDFIngestInput) -> str:
     """
     🌟 Starter+ — Parse a PDF equipment manual and ingest it into the RCA
-    knowledge base.
+    knowledge base. Rejects non-PDF input (checked via file signature,
+    not just the base64 wrapper) and files over 50MB.
+
+    A quality gate runs automatically: if the parsed quality score
+    falls below min_quality_threshold (default 0.3), ingestion is
+    refused with suggestions -- set skip_preview_check=true to bypass
+    it, or lower min_quality_threshold, if you've already reviewed the
+    content via rca_guide_pdf_preview and are OK with a rougher parse.
 
     Recommended workflow: 1) rca_guide_pdf_preview to check quality,
     2) rca_guide_ingest_pdf if quality >= 0.5, 3) rca_guide_search to verify.

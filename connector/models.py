@@ -38,13 +38,13 @@ class AuthSetupInput(BaseModel):
 
 class ListKeysInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="API key (admin role required)")
+    token: str = Field(..., description="API key to authenticate this request")
     client_id: str = Field(default="default", description="Client namespace ID")
 
 
 class RotateKeyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(..., description="API key (admin role required)")
+    token: str = Field(..., description="API key to authenticate this request")
     client_id: str = Field(default="default", description="Client namespace ID")
     key_id: str = Field(..., description="Existing key ID to rotate")
 
@@ -478,7 +478,7 @@ class ProviderConfigInput(BaseModel):
     provider: Optional[str] = Field(
         default=None,
         description=(
-            "Provider key. Available: claude_desktop, claude_code, "
+            "Provider key. Available: claude_desktop, claude_code, cursor, "
             "ollama_mcphost, groq_mcphost, openai_agents, gemini_mcphost, "
             "langchain_langgraph, openrouter, remote_http. "
             "Omit to list all providers."
