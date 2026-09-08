@@ -586,7 +586,17 @@ async def rca_graph_markov_blanket(params: MarkovBlanketInput) -> str:
 )
 async def rca_model_create(params: ModelCreateInput) -> str:
     """
-    Register a new RCA model spec in the registry.
+    Register a new RCA model spec in the registry, starting in "draft"
+    status. This just stores the spec — it doesn't run anything.
+
+    Plan limits on how many models you can hold: Free 5, Starter 20,
+    Pro+ unlimited (call rca_admin_show_plan_info to check your own
+    count/limit).
+
+    Typical lifecycle: create (here) → rca_analysis_run to use it →
+    rca_model_validate on hold-out data → rca_model_update_status to
+    mark it "deployed" (or "deprecated"/"failed") → rca_model_delete
+    when you're done with it entirely.
 
     Model families: bayesian_network | dowhy_causal_inference | granger_causality |
                     fault_tree_analysis | fishbone_ishikawa | fmea |
@@ -594,10 +604,16 @@ async def rca_model_create(params: ModelCreateInput) -> str:
                     random_forest_importance | counterfactual_analysis
 
     Args:
-        params (ModelCreateInput): name, family, description, config, tags, version
+        params (ModelCreateInput):
+            - name: for your own reference only
+            - family: which RCA algorithm this model will use
+            - description, tags, version: optional, for your own organization
+            - config: family-specific parameters (e.g. significance
+              threshold), passed through to the model at run time
 
     Returns:
-        str: JSON with model_id
+        str: JSON {model_id}, or a plan_required error if you're at
+             your model-count limit
     """
     return await _client.call("model/create", params.model_dump())
 
@@ -1000,14 +1016,21 @@ async def rca_report_generate(params: ReportGenerateInput) -> str:
 async def rca_report_compare(params: ReportCompareInput) -> str:
     """
     Generate a comparative report across 2–10 RCA results, showing consensus
-    root causes, model agreement percentages, and per-model summaries.
+    root causes, model agreement percentages, and per-model summaries. Use
+    this instead of rca_analysis_compare when you want a shareable
+    formatted document rather than raw comparison JSON.
+
+    `format: "html"` requires Starter+ (Free plan gets a plan_required
+    error and should use the default "markdown" instead).
 
     Args:
         params (ReportCompareInput):
-            - result_ids: 2–10 result IDs to compare
-            - format: markdown | html
-            - title: report title
-            - save: persist to storage
+            - result_ids: 2–10 result IDs to compare (from
+              rca_analysis_run or rca_analysis_list_results)
+            - format: "markdown" (default, all plans) or "html" (Starter+)
+            - title: report title, up to 200 chars
+            - save: persist the report server-side for later retrieval
+              (default true)
 
     Returns:
         str: Comparative report (text/html) with consensus_root_causes table
@@ -1238,16 +1261,30 @@ async def rca_guide_delete(params: GuideDeleteInput) -> str:
 async def rca_dtree_start(params: DTreeStartInput) -> str:
     """
     🌟 Starter+ — Begin an interactive diagnostic session using a decision
-    tree guide. Returns the first question — answer with rca_dtree_answer.
+    tree guide. Returns a question — answer with rca_dtree_answer, one
+    call per question, until the session resolves to a diagnosis.
 
     Two modes:
       1. guide_id = <uuid>  → Use a specific json_dtree guide
       2. guide_id = "auto"  → Auto-generate tree from FMEA results
          (requires fmea_result_id pointing to a completed FMEA analysis)
 
+    session_id resume behavior (non-obvious): if you pass a session_id
+    that's yours and not yet resolved, this returns its CURRENT
+    question — guide_id/equipment_id/symptom are ignored entirely in
+    that case. If the session_id is missing, already resolved, or
+    belongs to someone else, it's silently treated as if you'd omitted
+    it: a brand-new session starts fresh under that same session_id
+    (or a fresh UUID if you didn't supply one) — you won't get an
+    error, so a typo'd ID quietly starts over rather than resuming.
+
     Args:
-        params (DTreeStartInput): guide_id, equipment_id, symptom, session_id,
-            fmea_result_id
+        params (DTreeStartInput):
+            - guide_id: guide UUID or "auto"
+            - equipment_id: equipment being diagnosed
+            - symptom: initial fault description
+            - session_id: optional; see resume behavior above
+            - fmea_result_id: required when guide_id="auto"
 
     Returns:
         str: JSON with session_id, question, options (yes/no/unknown), progress_pct

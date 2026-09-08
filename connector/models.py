@@ -39,20 +39,20 @@ class AuthSetupInput(BaseModel):
 class ListKeysInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key (admin role required)")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
 
 
 class RotateKeyInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key (admin role required)")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
     key_id: str = Field(..., description="Existing key ID to rotate")
 
 
 class RevokeTokenInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key to authenticate this request")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
     key_id_to_revoke: str = Field(
         ..., description="UUID of one of your own keys to deactivate (can be the same key presented in 'token')"
     )
@@ -77,7 +77,7 @@ class AuditInput(BaseModel):
 class PurgeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
     namespace: str = Field(
         ..., description="One of: graphs, models, results", pattern="^(graphs|models|results)$"
     )
@@ -87,15 +87,15 @@ class PurgeInput(BaseModel):
 class GraphCreateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(..., description="API key")
-    client_id: str = Field(default="default")
+    client_id: str = Field(default="default", description="Client namespace ID")
     name: str = Field(..., min_length=1, max_length=128, description="Graph name")
     description: str = Field(default="", max_length=512, description="Optional free-text notes on this graph's purpose")
 
 
 class GraphGetInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph ID returned by rca_graph_create")
     format: str = Field(
         default="json",
@@ -106,15 +106,15 @@ class GraphGetInput(BaseModel):
 
 class GraphScoreInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to score")
 
 
 class GraphDiscoverInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     name: str = Field(..., min_length=1, max_length=128, description="Name for the discovered graph")
     data: Dict[str, List[float]] = Field(
         ..., description="Dict of {variable_name: [values]}. Min 30 samples, max 50 variables."
@@ -127,23 +127,23 @@ class GraphDiscoverInput(BaseModel):
 
 class GraphDeleteInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph ID to delete")
     confirm: bool = Field(..., description="Must be true to delete")
 
 
 class GraphListVersionsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph ID to list versions for")
 
 
 class GraphRestoreVersionInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph ID to restore")
     version_id: str = Field(..., description="Version ID to restore to (see rca_graph_list_versions)")
     confirm: bool = Field(..., description="Must be true to proceed")
@@ -151,8 +151,8 @@ class GraphRestoreVersionInput(BaseModel):
 
 class GraphMergeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id_a: str = Field(..., description="First graph")
     graph_id_b: str = Field(..., description="Second graph")
     merged_name: str = Field(..., min_length=1, max_length=128, description="Name for the merged graph")
@@ -164,8 +164,8 @@ class GraphMergeInput(BaseModel):
 
 class NodeOpInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to add the node to")
     name: str = Field(..., min_length=1, max_length=128, description="Unique node name within the graph")
     node_type: str = Field(
@@ -179,8 +179,8 @@ class NodeOpInput(BaseModel):
 
 class RemoveNodeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to modify")
     name: str = Field(
         ..., min_length=1, max_length=128,
@@ -190,8 +190,8 @@ class RemoveNodeInput(BaseModel):
 
 class EdgeOpInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to add the edge to")
     source: str = Field(..., min_length=1, max_length=128, description="Cause node name (must already exist in the graph)")
     target: str = Field(..., min_length=1, max_length=128, description="Effect node name (must already exist in the graph)")
@@ -202,8 +202,8 @@ class EdgeOpInput(BaseModel):
 
 class RemoveEdgeInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to modify")
     source: str = Field(
         ..., min_length=1, max_length=128,
@@ -217,8 +217,8 @@ class RemoveEdgeInput(BaseModel):
 
 class PathScoreInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph to search")
     target_node: str = Field(..., description="Incident or effect node to trace causes for")
     top_k: int = Field(default=10, ge=1, le=50, description="Number of top paths to return")
@@ -226,16 +226,16 @@ class PathScoreInput(BaseModel):
 
 class MarkovBlanketInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     graph_id: str = Field(..., description="Graph containing the node")
     node: str = Field(..., description="Node to compute Markov blanket for")
 
 
 class ModelCreateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     name: str = Field(..., min_length=1, max_length=128, description="Model name (for your own reference — doesn't affect behavior)")
     family: str = Field(..., pattern=r"^(bayesian_network|dowhy_causal_inference|granger_causality|fault_tree_analysis|fishbone_ishikawa|fmea|bayesian_structural_time_series|change_point_detection|random_forest_importance|counterfactual_analysis)$", description="RCA model family (see rca_admin_health for list)")
     description: str = Field(default="", max_length=512, description="Optional free-text notes on what this model is for")
@@ -248,24 +248,24 @@ class ModelCreateInput(BaseModel):
 
 class ModelListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     family_filter: Optional[str] = Field(default=None, pattern=r"^(bayesian_network|dowhy_causal_inference|granger_causality|fault_tree_analysis|fishbone_ishikawa|fmea|bayesian_structural_time_series|change_point_detection|random_forest_importance|counterfactual_analysis)$", description="Only return models of this family (omit for all families)")
     status_filter: Optional[str] = Field(default=None, pattern=r"^(draft|trained|validated|deployed|deprecated|failed)$", description="Only return models with this status: draft | trained | validated | deployed | deprecated | failed (omit for all statuses)")
 
 
 class ModelStatusInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model ID to update")
     new_status: str = Field(..., pattern=r"^(draft|trained|validated|deployed|deprecated|failed)$", description="Target status")
 
 
 class ModelValidateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model to validate (from rca_model_create)")
     validation_data: Dict[str, List[Any]] = Field(
         ..., description="Hold-out dataset for validation: {variable: [values]}"
@@ -275,16 +275,16 @@ class ModelValidateInput(BaseModel):
 
 class ModelDeleteInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model to permanently delete")
     confirm: bool = Field(..., description="Must be true to proceed with the deletion")
 
 
 class RunAnalysisInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model to run (must exist in registry)")
     payload: Dict[str, Any] = Field(
         ...,
@@ -307,8 +307,8 @@ class RunAnalysisInput(BaseModel):
 
 class GetResultInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     result_id: str = Field(
         ..., description="A result_id returned by a prior analysis call (not a model_id or graph_id)"
     )
@@ -316,8 +316,8 @@ class GetResultInput(BaseModel):
 
 class ListResultsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     limit: int = Field(default=20, ge=1, le=100, description="Page size, 1-100")
     offset: int = Field(
         default=0, ge=0, description="Number of results to skip from the newest, for paging"
@@ -326,8 +326,8 @@ class ListResultsInput(BaseModel):
 
 class QueryResultsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_family: Optional[str] = Field(default=None, description="Filter by model family")
     min_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Only return results with confidence_overall at or above this, 0.0-1.0 (default 0.0 = no filter)")
     after_ts: Optional[str] = Field(
@@ -340,15 +340,15 @@ class QueryResultsInput(BaseModel):
 
 class CompareResultsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     result_ids: List[str] = Field(..., min_length=2, max_length=10, description="2-10 result_ids to compare side by side (from rca_analysis_run or rca_analysis_list_results)")
 
 
 class ExplainInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     result_id: str = Field(..., description="Result to explain")
     detail_level: str = Field(
         default="standard",
@@ -359,8 +359,8 @@ class ExplainInput(BaseModel):
 
 class BatchAnalysisInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model to apply to all incidents")
     incidents: List[Dict[str, Any]] = Field(
         ...,
@@ -377,8 +377,8 @@ class BatchAnalysisInput(BaseModel):
 
 class EnsembleInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_ids: List[str] = Field(
         ..., min_length=2, max_length=5, description="2-5 model IDs to ensemble"
     )
@@ -391,8 +391,8 @@ class EnsembleInput(BaseModel):
 
 class EpsilonDiagnosisInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     normal_data: Dict[str, List[float]] = Field(
         ..., description="Baseline metric data {metric: [values]}. Min 3 values per metric.")
     anomaly_data: Dict[str, List[float]] = Field(
@@ -406,8 +406,8 @@ class EpsilonDiagnosisInput(BaseModel):
 
 class RandomWalkInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     adjacency: Dict[str, Dict[str, float]] = Field(
         ..., description="{source: {target: edge_weight}} directed adjacency dict")
     anomaly_scores: Dict[str, float] = Field(
@@ -420,8 +420,8 @@ class RandomWalkInput(BaseModel):
 
 class HTDiagnosisInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     data: Dict[str, List[float]] = Field(
         ..., description="{metric: [time_series_values]} full time series")
     adjacency: Dict[str, Dict[str, float]] = Field(
@@ -439,8 +439,8 @@ class HTDiagnosisInput(BaseModel):
 
 class ReportGenerateInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     result_id: str = Field(..., description="Result ID to generate report from")
     format: str = Field(
         ..., description="Output format: pdf | html | excel | markdown",
@@ -463,8 +463,8 @@ class ReportGenerateInput(BaseModel):
 
 class ReportCompareInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     result_ids: List[str] = Field(..., min_length=2, max_length=10, description="2-10 result_ids to compare in one report")
     format: str = Field(default="markdown", pattern="^(markdown|html)$", description="Output format: markdown (default) or html")
     title: str = Field(default="RCA Comparative Analysis Report", max_length=200, description="Report title, up to 200 chars")
@@ -473,8 +473,8 @@ class ReportCompareInput(BaseModel):
 
 class ProviderConfigInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     provider: Optional[str] = Field(
         default=None,
         description=(
@@ -488,14 +488,14 @@ class ProviderConfigInput(BaseModel):
 
 class PyRCASetupInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
 
 
 class RunAnalysisAsyncInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     model_id: str = Field(..., description="Model to run (must exist in registry)")
     payload: Dict[str, Any] = Field(..., description="Analysis payload — same shape as rca_analysis_run")
     save: bool = Field(default=True, description="Persist the result server-side once the task completes (default true)")
@@ -504,8 +504,8 @@ class RunAnalysisAsyncInput(BaseModel):
 
 class PollTaskInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     task_id: str = Field(..., description="Task ID returned by rca_analysis_run_async")
 
 
@@ -513,16 +513,16 @@ class PollTaskInput(BaseModel):
 
 class PlanInfoInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
 
 
 # ── Group H — Equipment Knowledge (Phase 9) ─────────────────────────────────────
 
 class GuideIngestInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     equipment_id: str = Field(..., min_length=1, max_length=128,
         description="Unique equipment identifier e.g. 'pump_XR200_unit3'")
     equipment_type: str = Field(...,
@@ -544,8 +544,8 @@ class GuideIngestInput(BaseModel):
 
 class GuideSearchInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     symptom: str = Field(..., min_length=3, max_length=512,
         description="Symptom or fault description to search for")
     equipment_type: Optional[str] = Field(default=None,
@@ -558,8 +558,8 @@ class GuideSearchInput(BaseModel):
 
 class GuideGetInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     guide_id: str = Field(..., description="Guide ID from rca_guide_ingest")
     section_id: Optional[str] = Field(default=None,
         description="Optional: retrieve specific section only")
@@ -567,24 +567,24 @@ class GuideGetInput(BaseModel):
 
 class GuideListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     equipment_type: Optional[str] = Field(default=None, description="Only return guides for this equipment type (omit for all types)")
     tags: Optional[List[str]] = Field(default=None, description="Only return guides matching any of these tags (omit for all guides)")
 
 
 class GuideDeleteInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     guide_id: str = Field(..., description="Guide ID to delete")
     confirm: bool = Field(..., description="Must be true to actually delete")
 
 
 class DTreeStartInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     guide_id: str = Field(...,
         description="Guide ID of a json_dtree guide, OR 'auto' to generate from FMEA")
     equipment_id: str = Field(..., min_length=1, max_length=128, description="Equipment this diagnostic session is for, e.g. 'pump_XR200_unit3'")
@@ -598,8 +598,8 @@ class DTreeStartInput(BaseModel):
 
 class DTreeAnswerInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     session_id: str = Field(..., description="Active session ID from rca_dtree_start")
     answer: str = Field(..., pattern="^(yes|no|unknown)$",
         description="Answer to current diagnostic question: yes | no | unknown")
@@ -609,8 +609,8 @@ class DTreeAnswerInput(BaseModel):
 
 class DTreeListInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     equipment_id: Optional[str] = Field(
         default=None, description="Filter to only this equipment's sessions (omit for all equipment)"
     )
@@ -622,8 +622,8 @@ class DTreeListInput(BaseModel):
 
 class GuideReportInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     session_id: str = Field(
         ..., description="A session_id already marked 'resolved' (check via rca_dtree_list_sessions)"
     )
@@ -642,8 +642,8 @@ class GuideReportInput(BaseModel):
 
 class DTreeGenerateFromFmeaInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     fmea_result_id: str = Field(..., description="result_id of a completed FMEA analysis")
     equipment_id: str = Field(..., min_length=1, max_length=128, description="Equipment this decision tree is generated for, e.g. 'pump_XR200_unit3'")
     equipment_type: str = Field(default="custom", description="Equipment type; see rca_guide_ingest's schema for supported values (default 'custom' for anything not on that list)")
@@ -653,8 +653,8 @@ class DTreeGenerateFromFmeaInput(BaseModel):
 
 class GuidePDFPreviewInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     pdf_base64: str = Field(
         ...,
         description="Base64-encoded PDF file bytes. "
@@ -669,8 +669,8 @@ class GuidePDFPreviewInput(BaseModel):
 
 class GuidePDFIngestInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str
-    client_id: str = Field(default="default")
+    token: str = Field(..., description="API key to authenticate this request")
+    client_id: str = Field(default="default", description="Client namespace ID")
     pdf_base64: str = Field(..., description="Base64-encoded PDF file bytes")
     equipment_id: str = Field(..., min_length=1, max_length=128,
         description="Unique equipment identifier e.g. 'pump_grundfos_cr32'")
