@@ -7,12 +7,12 @@
     "url": "https://github.com/dave1362/rca-mcp-connector",
     "source": "github"
   },
-  "version": "4.1.16",
+  "version": "4.1.17",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "rca-mcp-connector",
-      "version": "4.1.16",
+      "version": "4.1.17",
       "transport": {
         "type": "stdio"
       },
@@ -27,7 +27,7 @@
         },
         {
           "name": "RCA_MCP_API_KEY",
-          "description": "Your RCA-MCP API key — get one free at https://rca-mcp.pages.dev.",
+          "description": "Your RCA-MCP API key — get one free at https://rcamcp.datalizedglb.cloud.",
           "isRequired": true,
           "isSecret": true,
           "format": "string"

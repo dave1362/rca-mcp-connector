@@ -901,11 +901,14 @@ async def rca_analysis_run(params: RunAnalysisInput) -> str:
               throwaway check you don't want cluttering your result list)
             - tags: optional labels for filtering later with
               rca_analysis_query_results
+            - ai_summary: also generate a short NL executive summary
+              (Starter+, quota-limited -- see field description)
 
     Returns:
         str: JSON RCAResult with root_causes, confidence_overall,
-             explanation, raw model output, and _saved_as (the
-             result_id) if save=true
+             explanation, raw model output, _saved_as (the result_id)
+             if save=true, and ai_summary/ai_summary_error if
+             ai_summary=true was requested
     """
     return await _client.call("analysis/run", params.model_dump())
 

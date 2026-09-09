@@ -30,7 +30,7 @@ the install yourself):
 uvx rca-mcp-connector
 ```
 
-Get a free API key at [rca-mcp.pages.dev](https://rca-mcp.pages.dev) — no credit
+Get a free API key at [rcamcp.datalizedglb.cloud](https://rcamcp.datalizedglb.cloud) — no credit
 card required — then set `RCA_MCP_API_KEY` in your MCP client's config (examples
 below).
 
@@ -138,6 +138,6 @@ source code, per the private API's `models/pyrca_adapter.py`.
   author = {davetj},
   year   = {2026},
   url    = {https://github.com/dave1362/rca-mcp-connector},
-  note   = {v4.1.16}
+  note   = {v4.1.17}
 }
 ```

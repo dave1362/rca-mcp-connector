@@ -303,6 +303,17 @@ class RunAnalysisInput(BaseModel):
         default_factory=list, max_length=10,
         description="Tags for retrieval via rca_analysis_query_results",
     )
+    ai_summary: bool = Field(
+        default=False,
+        description=(
+            "Also generate a short plain-English executive summary via "
+            "Claude Haiku (platform-provided key). Starter+ only, subject "
+            "to a monthly quota (Starter 100, Pro 1000, Enterprise "
+            "unlimited) -- see ai_summary/ai_summary_error in the response. "
+            "Free plan or a used-up quota returns ai_summary_error instead "
+            "of failing the analysis itself."
+        ),
+    )
 
 
 class GetResultInput(BaseModel):
