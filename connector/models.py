@@ -616,6 +616,18 @@ class DTreeAnswerInput(BaseModel):
         description="Answer to current diagnostic question: yes | no | unknown")
     measurement: Optional[str] = Field(default=None, max_length=256,
         description="Optional actual reading e.g. 'bearing temp: 92C, vibration: 8.5mm/s'")
+    ai_summary: bool = Field(
+        default=False,
+        description=(
+            "If this answer resolves the session, also generate a short "
+            "plain-English executive summary of the diagnosis via Claude "
+            "Haiku (platform-provided key). Starter+ only, subject to the "
+            "same monthly quota as rca_analysis_run's ai_summary (Starter "
+            "100, Pro 1000, Enterprise unlimited) -- see "
+            "ai_summary/ai_summary_error in the response. Ignored while "
+            "status is still in_progress."
+        ),
+    )
 
 
 class DTreeListInput(BaseModel):

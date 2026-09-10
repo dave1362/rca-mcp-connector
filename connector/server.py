@@ -1614,9 +1614,14 @@ async def rca_dtree_answer(params: DTreeAnswerInput) -> str:
 
     Args:
         params (DTreeAnswerInput): session_id, answer (yes|no|unknown), measurement
+            - ai_summary: also generate a short NL executive summary if
+              this answer resolves the session (Starter+, quota-limited --
+              see field description)
 
     Returns:
-        str: JSON with status, question OR diagnosis, progress_pct.
+        str: JSON with status, question OR diagnosis, progress_pct, and
+             ai_summary/ai_summary_error if ai_summary=true was requested
+             and the session resolved.
              Diagnosis fields (when resolved): diagnosis, confidence, actions,
              parts_to_check, estimated_repair_time, escalate_to_specialist,
              fault_codes, references, diagnostic_path
