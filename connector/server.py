@@ -1416,14 +1416,16 @@ async def rca_admin_show_plan_info(params: PlanInfoInput) -> str:
     authentication -- there's nothing else to configure here.
 
     Call this proactively before something like rca_analysis_batch,
-    rca_model_create, rca_report_compare, rca_guide_generate_report, or
-    rca_dtree_start to check your limits up front, rather than
+    rca_model_create, rca_report_compare, rca_guide_generate_report,
+    rca_dtree_start, or the ai_summary flag on rca_analysis_run/
+    rca_dtree_answer to check your limits up front, rather than
     discovering a plan_required error mid-workflow -- several of those
     tools' docstrings point back to this one for exactly that reason.
 
     Returns:
-        str: JSON {plan, display_name, limits: {...}, features: {...},
-             locked_features: [...], upgrade_url (null on Enterprise)}
+        str: JSON {plan, display_name, limits: {..., ai_summary_monthly_quota},
+             features: {..., ai_summary}, locked_features: [...],
+             upgrade_url (null on Enterprise)}
     """
     return await _client.call("admin/show_plan_info", params.model_dump())
 
