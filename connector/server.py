@@ -1,7 +1,7 @@
 """
 RCA-MCP Public Connector — FastMCP Server
 ============================================
-Thin MCP server exposing all 55 RCA-MCP tool names and schemas.
+Thin MCP server exposing all 56 RCA-MCP tool names and schemas.
 Every tool is a pure forwarder to the private RCA-MCP API via
 RCAMCPClient — no analytical logic, no security enforcement, no
 storage. All of that lives in the private core and is enforced
@@ -1306,7 +1306,7 @@ async def rca_provider_list_configs(params: ProviderConfigInput) -> str:
       gemini_mcphost     — Google Gemini via MCPHost bridge
       langchain_langgraph — LangChain/LangGraph via mcp-adapters
       openrouter         — OpenRouter (200+ models) via MCPHost
-      remote_http        — Any client via Railway/cloud HTTP deployment
+      remote_http        — Direct Streamable HTTP (advanced, custom clients only)
 
     Args:
         params (ProviderConfigInput):

@@ -537,9 +537,8 @@ class GuideIngestInput(BaseModel):
     equipment_id: str = Field(..., min_length=1, max_length=128,
         description="Unique equipment identifier e.g. 'pump_XR200_unit3'")
     equipment_type: str = Field(...,
-        description="Equipment type e.g. pump, motor, compressor, conveyor, valve, "
-                     "sensor, hvac, plc, vacuum_pump, interface_valve, ml_pipeline, "
-                     "cfd_solver, custom")
+        description="Equipment type. Supported: pump, motor, compressor, conveyor, "
+                     "valve, sensor, hvac, plc, vfd, heat_exchanger...")
     name: str = Field(..., min_length=1, max_length=256,
         description="Human-readable guide name")
     content: str = Field(..., min_length=10,

@@ -7,12 +7,12 @@
     "url": "https://github.com/dave1362/rca-mcp-connector",
     "source": "github"
   },
-  "version": "4.1.19",
+  "version": "4.1.20",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "rca-mcp-connector",
-      "version": "4.1.19",
+      "version": "4.1.20",
       "transport": {
         "type": "stdio"
       },
