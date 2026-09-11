@@ -4,11 +4,8 @@
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![PulseMCP](https://img.shields.io/badge/PulseMCP-listed-orange)
 
-> **⚠️ Early access.** RCA-MCP's backend is live and this connector has been
-> verified end-to-end against it. The `api.rca-mcp.com` custom domain isn't
-> wired up yet — point `RCA_MCP_API_URL` at the current backend URL below.
-> Tool schemas and documentation may still change before the first stable
-> public launch.
+> **Note:** the `api.rca-mcp.com` custom domain isn't wired up yet — point
+> `RCA_MCP_API_URL` at the current backend URL below instead.
 
 ## What is RCA-MCP?
 
@@ -135,9 +132,9 @@ source code, per the private API's `models/pyrca_adapter.py`.
 ```bibtex
 @software{rcamcp2026,
   title  = {RCA-MCP: An MCP Server for Causal Root Cause Analysis},
-  author = {davetj},
+  author = {dave1362},
   year   = {2026},
   url    = {https://github.com/dave1362/rca-mcp-connector},
-  note   = {v4.1.17}
+  note   = {v4.1.20}
 }
 ```
